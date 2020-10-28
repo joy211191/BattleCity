@@ -18,6 +18,8 @@ ClientApp::ClientApp()
    , tickrate_(1.0 / 60.0)
    , input_bits_(0)
 {
+    globalTick = 0;
+    recievedServerTick = 0;
 }
 
 bool ClientApp::on_init()

@@ -79,8 +79,12 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
    Vector2 send_position_;
 
    Random random_;
-   gameplay::Player player_;
-   uint8 player_input_bits_;
+   charlie::DynamicArray<gameplay::Player> player_;
+   //gameplay::Player player_[4];
+   Vector2 playerStartPositions[4];
+   uint8 player_input_bits_[4];
+
+   gameplay::GameState gameState;
 };
 
 #endif // !SERVER_APP_HPP_INCLUDED

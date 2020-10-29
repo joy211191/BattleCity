@@ -50,7 +50,7 @@ bool ClientApp::on_tick (const Time& dt) {
         accumulator_ -= tickrate_;
 
         if (positionHistory.size () > 0) {
-            if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200.0) {
+            if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
                 positionHistory.erase (positionHistory.begin ());
             }
 

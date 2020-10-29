@@ -1,1 +1,2 @@
-﻿  client.vcxproj -> D:\BattleCity\client\..\build\client.debug.exe
+﻿  client_app.cc
+  client.vcxproj -> D:\BattleCity\client\..\build\client.debug.exe

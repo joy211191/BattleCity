@@ -87,4 +87,4 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
    gameplay::GameState gameState;
 };
 
-#endif // !SERVER_APP_HPP_INCLUDED
+#endif

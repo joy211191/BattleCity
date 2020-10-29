@@ -66,7 +66,7 @@ namespace charlie {
 
       struct NetworkMessageInputCommand {
          NetworkMessageInputCommand();
-         explicit NetworkMessageInputCommand(uint8 bits);
+         explicit NetworkMessageInputCommand(uint8 bits,int32 playerID);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -82,6 +82,7 @@ namespace charlie {
 
          uint8 type_;
          uint8 bits_;
+         uint32 id;
       };
 
       struct NetworkMessagePlayerState {

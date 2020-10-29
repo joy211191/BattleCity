@@ -165,7 +165,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 }
 
 void ClientApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
-    network::NetworkMessageInputCommand command (input_bits_);
+    network::NetworkMessageInputCommand command (input_bits_,player_.playerID);
     if (!command.write (writer)) {
         assert (!"could not write network command!");
     }

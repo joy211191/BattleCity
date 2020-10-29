@@ -1,2 +1,4 @@
 ﻿  client_app.cc
+  main.cc
+  Generating Code...
   client.vcxproj -> D:\BattleCity\client\..\build\client.debug.exe

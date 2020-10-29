@@ -82,7 +82,7 @@ namespace charlie {
 
          uint8 type_;
          uint8 bits_;
-         uint32 id;
+         int32 id;
       };
 
       struct NetworkMessagePlayerState {

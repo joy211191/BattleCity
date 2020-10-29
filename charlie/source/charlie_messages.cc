@@ -57,10 +57,10 @@ namespace charlie {
       {
       }
 
-      NetworkMessageInputCommand::NetworkMessageInputCommand(uint8 bits,int32 playerID)
+      NetworkMessageInputCommand::NetworkMessageInputCommand(uint8 bits, int32 playerID)
          : type_(NETWORK_MESSAGE_INPUT_COMMAND)
-         , bits_(bits)
-          ,id(playerID)
+         , bits_(bits),
+          id(playerID)
       {
       }
 

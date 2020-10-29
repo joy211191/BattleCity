@@ -1,2 +1,4 @@
-﻿  server_app.cc
-D:\BattleCity\server\source\server_app.cc(103): error C4700: uninitialized local variable 'i' used
+﻿  main.cc
+  server_app.cc
+  Generating Code...
+  server.vcxproj -> D:\BattleCity\server\..\build\server.debug.exe

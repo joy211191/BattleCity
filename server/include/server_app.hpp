@@ -8,83 +8,79 @@
 using namespace charlie;
 
 struct ClientList {
-   ClientList()
-      : next_(0)
-   {
-   }
+    ClientList ()
+        : next_ (0) {
+    }
 
-   int32 add_client(const uint64 connection)
-   {
-      const int32 id = next_++;
-      clients_.push_back({ id, connection });
-      return id;
-   }
+    int32 add_client (const uint64 connection) {
+        const int32 id = next_++;
+        clients_.push_back ({ id, connection });
+        return id;
+    }
 
-   int32 find_client(const uint64 connection)
-   {
-      for (auto &client : clients_) {
-         if (client.connection_ == connection) {
-            return client.id_;
-         }
-      }
-      return -1;
-   }
+    int32 find_client (const uint64 connection) {
+        for (auto& client : clients_) {
+            if (client.connection_ == connection) {
+                return client.id_;
+            }
+        }
+        return -1;
+    }
 
-   void remove_client(const uint64 connection)
-   {
-      auto it = clients_.begin();
-      while (it != clients_.end()) {
-         if ((*it).connection_ == connection) {
-            clients_.erase(it);
-            break;
-         }
-         ++it;
-      }
-   }
+    void remove_client (const uint64 connection) {
+        auto it = clients_.begin ();
+        while (it != clients_.end ()) {
+            if ((*it).connection_ == connection) {
+                clients_.erase (it);
+                break;
+            }
+            ++it;
+        }
+    }
 
-   struct Client {
-      int32  id_{ -1 };
-      uint64 connection_{};
-   };
+    struct Client {
+        int32  id_{ -1 };
+        uint64 connection_{};
+    };
 
-   int32 next_;
-   DynamicArray<Client> clients_;
+    int32 next_;
+    DynamicArray<Client> clients_;
 };
 
 struct ServerApp final : Application, network::IServiceListener, network::IConnectionListener {
-   ServerApp();
+    ServerApp ();
 
-   // note: Application
-   virtual bool on_init();
-   virtual void on_exit();
-   virtual bool on_tick(const Time &dt);
-   virtual void on_draw();
+    // note: Application
+    virtual bool on_init ();
+    virtual void on_exit ();
+    virtual bool on_tick (const Time& dt);
+    virtual void on_draw ();
 
-   // note: IServiceListener
-   virtual void on_timeout(network::Connection *connection);
-   virtual void on_connect(network::Connection *connection);
-   virtual void on_disconnect(network::Connection *connection);
+    // note: IServiceListener
+    virtual void on_timeout (network::Connection* connection);
+    virtual void on_connect (network::Connection* connection);
+    virtual void on_disconnect (network::Connection* connection);
 
-   // note: IConnectionListener 
-   virtual void on_acknowledge(network::Connection *connection, const uint16 sequence);
-   virtual void on_receive(network::Connection *connection, network::NetworkStreamReader &reader);
-   virtual void on_send(network::Connection *connection, const uint16 sequence, network::NetworkStreamWriter &writer);
+    // note: IConnectionListener 
+    virtual void on_acknowledge (network::Connection* connection, const uint16 sequence);
+    virtual void on_receive (network::Connection* connection, network::NetworkStreamReader& reader);
+    virtual void on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer);
 
-   const Time tickrate_;
-   Time accumulator_;
-   uint32 tick_;
-   ClientList clients_;
+    const Time tickrate_;
+    Time accumulator_;
+    uint32 tick_;
+    ClientList clients_;
 
-   gameplay::Entity entity_;
-   Vector2 send_position_;
+    gameplay::Entity entity_;
+    Vector2 send_position_;
 
-   Random random_;
-   charlie::DynamicArray<gameplay::Player> player_;
-   //gameplay::Player player_[4];
-   Vector2 playerStartPositions[4];
-   uint8 player_input_bits_[4];
+    Random random_;
+    charlie::DynamicArray<gameplay::Player> player_;
+    //gameplay::Player player_[4];
+    Vector2 playerStartPositions[4];
+    uint8 player_input_bits_[4];
 
-   gameplay::GameState gameState;
+    gameplay::GameState gameState;
 };
 
-#endif
+#endif // !SERVER_APP_HPP_INCLUDED

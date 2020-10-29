@@ -35,8 +35,8 @@ bool ClientApp::on_init()
    return true;
 }
 
-void ClientApp::on_exit()
-{
+void ClientApp::on_exit () {
+
 }
 
 bool ClientApp::on_tick (const Time& dt) {
@@ -55,7 +55,6 @@ bool ClientApp::on_tick (const Time& dt) {
             }
 
             float distance = Vector2::distance (positionHistory.back ().position, entity_.position_);
-
             entity_.position_ = Vector2::lerp (entity_.position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
         }
         input_bits_ = 0;
@@ -75,6 +74,7 @@ bool ClientApp::on_tick (const Time& dt) {
             input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
         }
 
+        const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
         const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
         const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
         const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
@@ -107,17 +107,15 @@ bool ClientApp::on_tick (const Time& dt) {
     return true;
 }
 
-void ClientApp::on_draw()
-{
-   renderer_.clear({ 0.2f, 0.3f, 0.4f, 1.0f });
-   renderer_.render_text({ 2, 2 }, Color::White, 1, "CLIENT");
-   renderer_.render_rectangle_fill({ int32(entity_.position_.x_), int32(entity_.position_.y_), 20, 20 }, Color::Green);
-   renderer_.render_rectangle_fill({ int32(player_.position_.x_), int32(player_.position_.y_), 20, 20 }, Color::Magenta);
+void ClientApp::on_draw () {
+    renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
+    renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
+    renderer_.render_rectangle_fill ({ int32 (entity_.position_.x_), int32 (entity_.position_.y_), 20, 20 }, Color::Green);
+    renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, Color::Magenta);
 }
 
-void ClientApp::on_acknowledge(network::Connection *connection, 
-                               const uint16 sequence)
-{
+void ClientApp::on_acknowledge (network::Connection* connection, const uint16 sequence) {
+
 }
 
 void ClientApp::on_receive (network::Connection* connection, network::NetworkStreamReader& reader) {
@@ -172,7 +170,7 @@ void ClientApp::on_send (network::Connection* connection, const uint16 sequence,
 }
 
 network::IPAddress ClientApp::ServerDiscovery () {
-   network::UDPSocket socket;
+    network::UDPSocket socket;
     if (socket.open ()) {
         DynamicArray<network::IPAddress> addresses;
         network::IPAddress address;
@@ -194,12 +192,12 @@ network::IPAddress ClientApp::ServerDiscovery () {
 
         bool found = false;
         int tries = 0;
-        
+
         while (!found) {
             stream.reset ();
             if (socket.receive (address, stream.buffer_, stream.length_)) {
                 network::NetworkStreamReader reader (stream);
-                if (reader.peek () == network:: ProtocolPacketType::PROTOCOL_PACKET_CHALLENGE) {
+                if (reader.peek () == network::ProtocolPacketType::PROTOCOL_PACKET_CHALLENGE) {
                     printf ("Server found");
                     found = true;
                     return address;
@@ -237,4 +235,3 @@ network::IPAddress ClientApp::ServerDiscovery () {
     else
         return network::IPAddress ();
 }
-

@@ -12,6 +12,18 @@ namespace charlie {
          int32 entityID;
       };
 
+      enum class EventStates {
+          PlayerDeath,
+          PlayerSpawn,
+          Shooting
+      };
+
+      struct Event {
+          Vector2 position;
+          EventStates state;
+          int32 playerID;
+      };
+
       enum class Action {
          Up,
          Down,
@@ -26,9 +38,16 @@ namespace charlie {
           Exit,
       };
 
+      struct ReliableMessage {
+          uint16 sequenceNumber;
+          Event event;
+      };
+
       struct Player {
+         charlie::DynamicArray<ReliableMessage> eventQueue;
          Vector2 position_;
          int32 playerID;
+         int points;
       };
 
       struct ComponentBase {
@@ -309,4 +328,4 @@ namespace charlie {
    } // !gameplay
 } // !charlie
 
-#endif // !CHARLIE_GAMEPLAY_HPP_INCLUDED
+#endif // !CHARLIE_GAMEPLAY_HPP_INCLUDdf

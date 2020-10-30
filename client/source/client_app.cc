@@ -20,6 +20,7 @@ ClientApp::ClientApp()
 {
     globalTick = 0;
     recievedServerTick = 0;
+    gameState = gameplay::GameState::Lobby;
 }
 
 bool ClientApp::on_init()
@@ -30,89 +31,135 @@ bool ClientApp::on_init()
    }
 
    connection_.set_listener(this);
-   connection_.connect(network::IPAddress(127, 0, 0, 1, 54345));
+   //int a, b, c, d;
+   //printf ("Enter the IPAddress: ");
+   //scanf ("%d,%d,%d,%d", &a, &b, &c, &d);
+
+   connection_.connect(network::IPAddress(192, 168, 1, 12, 54345));
 
    return true;
 }
 
 void ClientApp::on_exit () {
-
+    
 }
 
 bool ClientApp::on_tick (const Time& dt) {
     if (keyboard_.pressed (Keyboard::Key::Escape)) {
+        on_exit ();
         return false;
     }
+    switch (gameState) {
+    case gameplay::GameState::Lobby: {
+        if (!serverFound)
+            serverFound=ServerDiscovery();
 
-    accumulator_ += dt;
-    while (accumulator_ >= tickrate_) {
-        globalTick = recievedServerTick;
-        accumulator_ -= tickrate_;
+        break;
+    }
+    case gameplay::GameState::Gameplay: {
+        accumulator_ += dt;
+        while (accumulator_ >= tickrate_) {
+            globalTick = recievedServerTick;
+            accumulator_ -= tickrate_;
 
-        if (positionHistory.size () > 0) {
-            if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
-                positionHistory.erase (positionHistory.begin ());
+            if (positionHistory.size () > 0) {
+                if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
+                    positionHistory.erase (positionHistory.begin ());
+                }
+                for (int i = 0; i < sizeof (entity_); i++) {
+                    float distance = Vector2::distance (positionHistory.back ().position, entity_[i].position_);
+                    entity_[i].position_ = Vector2::lerp (entity_[i].position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
+                }
+            }
+            input_bits_ = 0;
+            if (player_.position_.y_ > 0) {
+                if (keyboard_.down (Keyboard::Key::W)) {
+                    input_bits_ |= (1 << int32 (gameplay::Action::Up));
+                }
+            }
+            if (player_.position_.y_ < window_.height_) {
+                if (keyboard_.down (Keyboard::Key::S)) {
+                    input_bits_ |= (1 << int32 (gameplay::Action::Down));
+                }
+            }
+            if (player_.position_.x_ > 0) {
+                if (keyboard_.down (Keyboard::Key::A)) {
+                    input_bits_ |= (1 << int32 (gameplay::Action::Left));
+                }
+            }
+            if (player_.position_.x_ < window_.width_) {
+                if (keyboard_.down (Keyboard::Key::D)) {
+                    input_bits_ |= (1 << int32 (gameplay::Action::Right));
+                }
+            }
+            if (keyboard_.down (Keyboard::Key::Space)) {
+                input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
             }
 
-            float distance = Vector2::distance (positionHistory.back ().position, entity_.position_);
-            entity_.position_ = Vector2::lerp (entity_.position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
-        }
-        input_bits_ = 0;
-        if (keyboard_.down (Keyboard::Key::W)) {
-            input_bits_ |= (1 << int32 (gameplay::Action::Up));
-        }
-        if (keyboard_.down (Keyboard::Key::S)) {
-            input_bits_ |= (1 << int32 (gameplay::Action::Down));
-        }
-        if (keyboard_.down (Keyboard::Key::A)) {
-            input_bits_ |= (1 << int32 (gameplay::Action::Left));
-        }
-        if (keyboard_.down (Keyboard::Key::D)) {
-            input_bits_ |= (1 << int32 (gameplay::Action::Right));
-        }
-        if (keyboard_.down (Keyboard::Key::Space)) {
-            input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
-        }
+            const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
+            const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
+            const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
+            const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
+            const bool player_move_right = input_bits_ & (1 << int32 (gameplay::Action::Right));
 
-        const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
-        const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
-        const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
-        const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
-        const bool player_move_right = input_bits_ & (1 << int32 (gameplay::Action::Right));
+            Vector2 direction;
+            if (player_move_up) {
+                direction.y_ -= 1.0f;
+            }
+            if (player_move_down) {
+                direction.y_ += 1.0f;
+            }
+            if (player_move_left) {
+                direction.x_ -= 1.0f;
+            }
+            if (player_move_right) {
+                direction.x_ += 1.0f;
+            }
+            const float speed = 100.0;
+            if (direction.length () > 0.0f) {
+                direction.normalize ();
+                player_.position_ = Vector2::lerp (player_.position_, player_.position_ + direction * speed, tickrate_.as_seconds ());
+            }
+            InputPrediction temp;
+            temp.inputBits = input_bits_;
+            temp.tick = globalTick;
+            temp.calculatedPosition = player_.position_;
+            inputLibrary.push_back (temp);
+            break;
 
-        Vector2 direction;
-        if (player_move_up) {
-            direction.y_ -= 1.0f;
         }
-        if (player_move_down) {
-            direction.y_ += 1.0f;
-        }
-        if (player_move_left) {
-            direction.x_ -= 1.0f;
-        }
-        if (player_move_right) {
-            direction.x_ += 1.0f;
-        }
-        const float speed = 100.0;
-        if (direction.length () > 0.0f) {
-            direction.normalize ();
-            player_.position_ = Vector2::lerp (player_.position_, player_.position_ + direction * speed, tickrate_.as_seconds ());
-        }
-        InputPrediction temp;
-        temp.inputBits = input_bits_;
-        temp.tick = globalTick;
-        temp.calculatedPosition = player_.position_;
-        inputLibrary.push_back (temp);
+    }
+
+    case gameplay::GameState::Exit: {
+
+        break;
+    }
     }
     return true;
 }
 
 void ClientApp::on_draw () {
-    renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
-    renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
-    renderer_.render_rectangle_fill ({ int32 (entity_.position_.x_), int32 (entity_.position_.y_), 20, 20 }, Color::Green);
-    renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, Color::Magenta);
+    switch (gameState) {
+    case charlie::gameplay::GameState::Lobby: {
+        if(serverFound)
+        renderer_.render_text_va ({ 2,2 }, Color::Yellow, 1, "Server found at: %s",serverIP.as_string());
+        break;
+    }
+    case charlie::gameplay::GameState::Gameplay: {
+        renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
+        renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
+        for (int i = 0; i < sizeof (entity_); i++) {
+            renderer_.render_rectangle_fill ({ int32 (entity_[i].position_.x_), int32 (entity_[i].position_.y_), 20, 20 }, Color::Green);
+        }
+        renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, Color::Magenta);
+        break;
+    }
+    case charlie::gameplay::GameState::Exit: {
+        break;
+    }
+    }
 }
+   
 
 void ClientApp::on_acknowledge (network::Connection* connection, const uint16 sequence) {
 
@@ -151,7 +198,17 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 assert (!"could not read message!");
             }
 
-            player_.position_ = message.position_;
+            if (message.playerID == player_.playerID) {
+                player_.position_ = message.position_;
+            }
+            else {
+                for (auto& en : entity_) {
+                    if (en.entityID == message.playerID) {
+                        en.position_ = message.position_;
+                        break;
+                    }
+                }
+            }
         } break;
 
         default:
@@ -169,9 +226,10 @@ void ClientApp::on_send (network::Connection* connection, const uint16 sequence,
     }
 }
 
-network::IPAddress ClientApp::ServerDiscovery () {
-    network::UDPSocket socket;
-    if (socket.open ()) {
+bool ClientApp::ServerDiscovery () {
+    if (!socket.is_valid ())
+        socket.open ();
+    if (socket.is_valid ()) {
         DynamicArray<network::IPAddress> addresses;
         network::IPAddress address;
         if (network::IPAddress::local_addresses (addresses)) {
@@ -198,9 +256,10 @@ network::IPAddress ClientApp::ServerDiscovery () {
             if (socket.receive (address, stream.buffer_, stream.length_)) {
                 network::NetworkStreamReader reader (stream);
                 if (reader.peek () == network::ProtocolPacketType::PROTOCOL_PACKET_CHALLENGE) {
-                    printf ("Server found");
+                    printf ("Server found\n");
+                    serverIP = address;
                     found = true;
-                    return address;
+                    return true;
                 }
             }
             else {
@@ -230,8 +289,8 @@ network::IPAddress ClientApp::ServerDiscovery () {
         if (network::Error::is_critical (error_code)) {
             assert (false);
         }
-        return network::IPAddress (0, 0, 0, 0, 0);
+        return false;
     }
     else
-        return network::IPAddress ();
+        return false ;
 }

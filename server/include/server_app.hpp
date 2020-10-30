@@ -65,6 +65,8 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     virtual void on_acknowledge (network::Connection* connection, const uint16 sequence);
     virtual void on_receive (network::Connection* connection, network::NetworkStreamReader& reader);
     virtual void on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer);
+    
+    Keyboard keyboard;
 
     const Time tickrate_;
     Time accumulator_;
@@ -75,12 +77,13 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     Vector2 send_position_;
 
     Random random_;
-    charlie::DynamicArray<gameplay::Player> player_;
-    //gameplay::Player player_[4];
+    charlie::DynamicArray<gameplay::Player> players_;
     Vector2 playerStartPositions[4];
     uint8 player_input_bits_[4];
 
     gameplay::GameState gameState;
+
+    charlie::DynamicArray<gameplay::Event> eventQueue;
 };
 
 #endif // !SERVER_APP_HPP_INCLUDED

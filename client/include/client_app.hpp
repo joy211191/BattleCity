@@ -22,6 +22,8 @@ struct ClientApp final : Application, network::IConnectionListener {
    virtual void on_receive(network::Connection *connection, network::NetworkStreamReader &reader);
    virtual void on_send(network::Connection *connection, const uint16 sequence, network::NetworkStreamWriter &writer);
 
+   gameplay::GameState gameState;
+
    Mouse &mouse_;
    Keyboard &keyboard_;
    network::Connection connection_;
@@ -30,7 +32,7 @@ struct ClientApp final : Application, network::IConnectionListener {
 
    uint8 input_bits_;
    gameplay::Player player_;
-   gameplay::Entity entity_;
+   gameplay::Entity entity_[3];
 
    class PositionHistory {
    public:
@@ -51,7 +53,10 @@ struct ClientApp final : Application, network::IConnectionListener {
    uint32 globalTick;
    uint32 recievedServerTick;
 
-   network::IPAddress ServerDiscovery ();
+   network::UDPSocket socket;
+   network::IPAddress serverIP;
+   bool ServerDiscovery ();
+   bool serverFound=false;
 };
 
 #endif // !CLIENT_APP_HPP_INCLUDED

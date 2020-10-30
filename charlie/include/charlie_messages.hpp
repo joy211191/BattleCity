@@ -87,7 +87,7 @@ namespace charlie {
 
       struct NetworkMessagePlayerState {
          NetworkMessagePlayerState();
-         explicit NetworkMessagePlayerState(const Vector2 &position);
+         explicit NetworkMessagePlayerState(const Vector2 &position,const int32 &id);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -104,6 +104,7 @@ namespace charlie {
 
          uint8 type_;
          Vector2 position_;
+         int32 playerID;
       };
    } // !network
 } // !charlie

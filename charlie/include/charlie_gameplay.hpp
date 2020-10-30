@@ -33,6 +33,7 @@ namespace charlie {
       };
 
       enum class GameState {
+          Searching,
           Lobby,
           Gameplay,
           Exit,

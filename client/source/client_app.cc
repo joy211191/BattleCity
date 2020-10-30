@@ -20,7 +20,7 @@ ClientApp::ClientApp()
 {
     globalTick = 0;
     recievedServerTick = 0;
-    gameState = gameplay::GameState::Lobby;
+    gameState = gameplay::GameState::Searching;
 }
 
 bool ClientApp::on_init()
@@ -35,7 +35,6 @@ bool ClientApp::on_init()
    //printf ("Enter the IPAddress: ");
    //scanf ("%d,%d,%d,%d", &a, &b, &c, &d);
 
-   connection_.connect(network::IPAddress(192, 168, 1, 12, 54345));
 
    return true;
 }
@@ -50,12 +49,24 @@ bool ClientApp::on_tick (const Time& dt) {
         return false;
     }
     switch (gameState) {
-    case gameplay::GameState::Lobby: {
+    case gameplay::GameState::Searching: {
         if (!serverFound)
             serverFound=ServerDiscovery();
+        if (serverFound) {
+            if (keyboard_.pressed (Keyboard::Key::Space)&&(connection_.state_==network::Connection::State::Invalid||connection_.is_disconnected())) {
+                connection_.connect (serverIP);                
+            }
+        }
+        if (connection_.is_connected ()) {
+            gameState = gameplay::GameState::Lobby;
+        }
+        break;
+    }
+    case gameplay::GameState::Lobby: {
 
         break;
     }
+
     case gameplay::GameState::Gameplay: {
         accumulator_ += dt;
         while (accumulator_ >= tickrate_) {
@@ -129,7 +140,6 @@ bool ClientApp::on_tick (const Time& dt) {
 
         }
     }
-
     case gameplay::GameState::Exit: {
 
         break;
@@ -140,12 +150,19 @@ bool ClientApp::on_tick (const Time& dt) {
 
 void ClientApp::on_draw () {
     switch (gameState) {
-    case charlie::gameplay::GameState::Lobby: {
-        if(serverFound)
-        renderer_.render_text_va ({ 2,2 }, Color::Yellow, 1, "Server found at: %s",serverIP.as_string());
+    case gameplay::GameState::Searching: {
+        if (serverFound) {
+            renderer_.render_text_va ({ 2,2 }, Color::Yellow, 1, "Server found at: %s", serverIP.as_string ());
+            renderer_.render_text ({ 3,12 }, Color::Red, 1, "Do you want to connect? ");
+        }
         break;
     }
-    case charlie::gameplay::GameState::Gameplay: {
+    case gameplay::GameState::Lobby: {
+        
+        //renderer_
+        break;
+    }
+    case gameplay::GameState::Gameplay: {
         renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
         for (int i = 0; i < sizeof (entity_); i++) {
@@ -177,7 +194,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 
             const Time current = Time (message.server_time_);
             recievedServerTick = message.server_tick_;
-        } break;
+            break;
+        }
 
         case network::NETWORK_MESSAGE_ENTITY_STATE:
         {
@@ -189,7 +207,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             temp.position = message.position_;
             temp.tick = recievedServerTick;
             positionHistory.push_back (temp);
-        } break;
+            break;
+        }
 
         case network::NETWORK_MESSAGE_PLAYER_STATE:
         {
@@ -209,7 +228,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                     }
                 }
             }
-        } break;
+            break;
+        } 
 
         default:
         {
@@ -293,4 +313,8 @@ bool ClientApp::ServerDiscovery () {
     }
     else
         return false ;
+}
+
+void ConnectionHandler::on_rejected (const uint8 reason) {
+    printf ("Lobby full, %d", reason);
 }

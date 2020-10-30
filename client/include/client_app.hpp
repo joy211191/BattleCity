@@ -8,6 +8,17 @@
 
 using namespace charlie;
 
+
+class ConnectionHandler:public network::Connection {
+public:
+	void on_rejected (const uint8 reason);
+
+
+private:
+
+};
+
+
 struct ClientApp final : Application, network::IConnectionListener {
    ClientApp();
 
@@ -57,6 +68,7 @@ struct ClientApp final : Application, network::IConnectionListener {
    network::IPAddress serverIP;
    bool ServerDiscovery ();
    bool serverFound=false;
+  
 };
 
 #endif // !CLIENT_APP_HPP_INCLUDED

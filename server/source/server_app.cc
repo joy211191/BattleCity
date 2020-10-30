@@ -23,6 +23,7 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
 bool ServerApp::on_init () {
     network_.set_send_rate (Time (1.0 / 10.0));
     network_.set_allow_connections (true);
+    network_.set_connection_limit (16);
     if (!network_.initialize (network::IPAddress (network::IPAddress::ANY_HOST, 54345))) {
         return false;
     }
@@ -113,7 +114,7 @@ void ServerApp::on_draw () {
         renderer_.render_text ({ 5,2 }, Color::White, 1, "Waiting for Connections. Press space to start");
         if (players_.size() > 0) {
             for (int i = 0; i < players_.size (); i++) {
-                renderer_.render_text_va ({ 5,2 + i }, Color::White, 1, "%d", players_[i].playerID);
+                renderer_.render_text_va ({ 5,12 + i*10 }, Color::White, 1, "%d", players_[i].playerID);
             }
         }
         break;
@@ -153,6 +154,7 @@ void ServerApp::on_connect (network::Connection* connection) {
         tempPlayer.playerID = id;
         players_.push_back (tempPlayer);
     }
+    connection->set_state (network::Connection::State::Rejected);
 }
 
 void ServerApp::on_disconnect (network::Connection* connection) {

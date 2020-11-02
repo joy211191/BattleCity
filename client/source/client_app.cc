@@ -49,7 +49,7 @@ bool ClientApp::on_tick (const Time& dt) {
             serverFound=ServerDiscovery();
         if (serverFound) {
             if (keyboard_.pressed (Keyboard::Key::Space)&&(connection_.state_==network::Connection::State::Invalid||connection_.is_disconnected())) {
-                connection_.connect (serverIP);                
+                connection_.connect (serverIP);
             }
         }
         if (connection_.is_connected ()) {

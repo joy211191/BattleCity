@@ -35,7 +35,6 @@ namespace charlie {
 
       enum class GameState {
           Searching,
-          Lobby,
           Gameplay,
           Exit,
       };
@@ -49,7 +48,7 @@ namespace charlie {
          charlie::DynamicArray<ReliableMessage> eventQueue;
          Vector2 position_;
          int32 playerID;
-         int hp;
+         uint8 hp;
          Color playerColor;
       };
 

@@ -57,11 +57,6 @@ bool ClientApp::on_tick (const Time& dt) {
         }
         break;
     }
-    case gameplay::GameState::Lobby: {
-
-        break;
-    }
-
     case gameplay::GameState::Gameplay: {
         accumulator_ += dt;
         while (accumulator_ >= tickrate_) {
@@ -72,9 +67,9 @@ bool ClientApp::on_tick (const Time& dt) {
                 if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
                     positionHistory.erase (positionHistory.begin ());
                 }
-                for (int i = 0; i < sizeof (entity_); i++) {
-                    float distance = Vector2::distance (positionHistory.back ().position, entity_[i].position_);
-                    entity_[i].position_ = Vector2::lerp (entity_[i].position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
+                for (auto &ent:entity_) {
+                    float distance = Vector2::distance (positionHistory.back ().position, ent.position_);
+                    ent.position_ = Vector2::lerp (ent.position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
                 }
             }
             input_bits_ = 0;
@@ -152,16 +147,11 @@ void ClientApp::on_draw () {
         }
         break;
     }
-    case gameplay::GameState::Lobby: {
-        
-        
-        break;
-    }
     case gameplay::GameState::Gameplay: {
         renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
-        for (int i = 0; i < sizeof (entity_); i++) {
-            renderer_.render_rectangle_fill ({ int32 (entity_[i].position_.x_), int32 (entity_[i].position_.y_), 20, 20 }, entity_[i].entityColor);
+        for (auto &ent:entity_) {
+            renderer_.render_rectangle_fill ({ int32 (ent.position_.x_), int32 (ent.position_.y_), 20, 20 }, ent.entityColor);
         }
         renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
         break;

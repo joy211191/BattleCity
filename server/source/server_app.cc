@@ -12,7 +12,7 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
         player_input_bits_[i] = 0;
     }
 
-    gameState = gameplay::GameState::Lobby;
+    gameState = gameplay::GameState::Searching;
 
     playerStartPositions[0] = Vector2 (window_.width_ / 2, 0);
     playerStartPositions[1] = Vector2 (window_.width_, window_.height_ / 2);
@@ -53,8 +53,8 @@ bool ServerApp::on_tick (const Time& dt) {
         tick_++;
 
         switch (gameState) {
-        case gameplay::GameState::Lobby: {
-            if (keyboard.pressed (Keyboard::Key::Space)||players_.size()==1) {
+        case gameplay::GameState::Searching: {
+            if (keyboard.pressed (Keyboard::Key::Space)||players_.size()==4) {
                 gameState = gameplay::GameState::Gameplay;
                 break;
             }
@@ -94,8 +94,6 @@ bool ServerApp::on_tick (const Time& dt) {
                     players_[i].position_ += direction * speed * tickrate_.as_seconds ();
                 }
             }
-            //entity_.position_.x_ = 300.0f + std::cosf (Time::now ().as_seconds ()) * 150.0f;
-            //entity_.position_.y_ = 180.0f + std::sinf (Time::now ().as_seconds ()) * 100.0f;
             for (int i = 0; i < players_.size (); i++) {
                 if (players_[i].hp == 0){
                     gameState = gameplay::GameState::Exit;
@@ -115,11 +113,11 @@ bool ServerApp::on_tick (const Time& dt) {
 
 void ServerApp::on_draw () {
     switch (gameState) {
-    case gameplay::GameState::Lobby: {
-        renderer_.render_text ({ 5,2 }, Color::White, 1, "Waiting for Connections. Press space to start");
-        if (players_.size() > 0) {
+    case gameplay::GameState::Searching: {
+        renderer_.render_text ({ 5,12 }, Color::White, 1, "Waiting for Connections. Press space to start");
+        if (players_.size () > 0) {
             for (int i = 0; i < players_.size (); i++) {
-                renderer_.render_text_va ({ 5,12 + i*10 }, Color::White, 1, "%d", players_[i].playerID);
+                renderer_.render_text_va ({ 5,22 + i * 10 }, Color::White, 1, "%d", players_[i].playerID);
             }
         }
         break;
@@ -130,9 +128,8 @@ void ServerApp::on_draw () {
         renderer_.render_rectangle_fill ({ static_cast<int32>(send_position_.x_), static_cast<int32>(send_position_.y_),  20, 20 }, Color::Yellow);
         renderer_.render_rectangle_fill ({ static_cast<int32>(entity_.position_.x_), static_cast<int32>(entity_.position_.y_),  20, 20 }, Color::Red);
         for (int i = 0; i < players_.size (); i++) {
-            renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, Color::Magenta);
+            renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, players_[i].playerColor);
         }
-
         break;
     }
     case gameplay::GameState::Exit: {
@@ -153,8 +150,6 @@ void ServerApp::on_connect (network::Connection* connection) {
     connection->set_listener (this);
     if (players_.size () < 4) {
         auto id = clients_.add_client ((uint64)connection);
-        // event : "player_connected"
-        //Sending player the playerID back
         gameplay::Player tempPlayer;
         tempPlayer.playerID = id;
         players_.push_back (tempPlayer);

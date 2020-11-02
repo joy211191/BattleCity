@@ -1086,7 +1086,7 @@ namespace charlie {
       {
          assert(initialized_ == false);
          connection_limit_ = connection_limit;
-         connection_pool_.resize(connection_limit);
+         connection_pool_.resize(connection_limit*2);
       }
 
       void Service::add_service_listener(IServiceListener *listener)

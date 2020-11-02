@@ -31,11 +31,6 @@ bool ClientApp::on_init()
    }
 
    connection_.set_listener(this);
-   //int a, b, c, d;
-   //printf ("Enter the IPAddress: ");
-   //scanf ("%d,%d,%d,%d", &a, &b, &c, &d);
-
-
    return true;
 }
 
@@ -58,7 +53,7 @@ bool ClientApp::on_tick (const Time& dt) {
             }
         }
         if (connection_.is_connected ()) {
-            gameState = gameplay::GameState::Lobby;
+            gameState = gameplay::GameState::Gameplay;
         }
         break;
     }
@@ -159,16 +154,16 @@ void ClientApp::on_draw () {
     }
     case gameplay::GameState::Lobby: {
         
-        //renderer_
+        
         break;
     }
     case gameplay::GameState::Gameplay: {
         renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
         for (int i = 0; i < sizeof (entity_); i++) {
-            renderer_.render_rectangle_fill ({ int32 (entity_[i].position_.x_), int32 (entity_[i].position_.y_), 20, 20 }, Color::Green);
+            renderer_.render_rectangle_fill ({ int32 (entity_[i].position_.x_), int32 (entity_[i].position_.y_), 20, 20 }, entity_[i].entityColor);
         }
-        renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, Color::Magenta);
+        renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
         break;
     }
     case charlie::gameplay::GameState::Exit: {
@@ -305,7 +300,7 @@ bool ClientApp::ServerDiscovery () {
         printf ("Out of tries\n");
 
         auto error_code = network::Error::get_last ();
-        printf ("ERR: %d/n", error_code);
+        printf ("ERR: %d\n", error_code);
         if (network::Error::is_critical (error_code)) {
             assert (false);
         }

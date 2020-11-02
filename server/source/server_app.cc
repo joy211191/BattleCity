@@ -18,6 +18,11 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
     playerStartPositions[1] = Vector2 (window_.width_, window_.height_ / 2);
     playerStartPositions[2] = Vector2 (window_.width_ / 2, window_.height_);
     playerStartPositions[3] = Vector2 (0, window_.height_ / 2);
+
+    playerColors[0] = Color::Red;
+    playerColors[1] = Color::Green;
+    playerColors[2] = Color::Blue;
+    playerColors[3] = Color::Yellow;
 }
 
 bool ServerApp::on_init () {
@@ -33,6 +38,7 @@ bool ServerApp::on_init () {
     entity_.position_ = { 300.0f, 180.0f };
     for (int i = 0; i < players_.size (); i++) {
         players_[i].position_ = playerStartPositions[i];
+        players_[i].playerColor = playerColors[i];
     }
     return true;
 }
@@ -48,7 +54,7 @@ bool ServerApp::on_tick (const Time& dt) {
 
         switch (gameState) {
         case gameplay::GameState::Lobby: {
-            if (keyboard.pressed (Keyboard::Key::Space)) {
+            if (keyboard.pressed (Keyboard::Key::Space)||players_.size()==1) {
                 gameState = gameplay::GameState::Gameplay;
                 break;
             }
@@ -56,7 +62,6 @@ bool ServerApp::on_tick (const Time& dt) {
         }
         case gameplay::GameState::Gameplay: {
             for (int i = 0; i < players_.size (); i++) {
-
                 const bool player_move_up = player_input_bits_[i] & (1 << int32 (gameplay::Action::Up));
                 const bool player_move_down = player_input_bits_[i] & (1 << int32 (gameplay::Action::Down));
                 const bool player_move_left = player_input_bits_[i] & (1 << int32 (gameplay::Action::Left));
@@ -89,10 +94,10 @@ bool ServerApp::on_tick (const Time& dt) {
                     players_[i].position_ += direction * speed * tickrate_.as_seconds ();
                 }
             }
-            entity_.position_.x_ = 300.0f + std::cosf (Time::now ().as_seconds ()) * 150.0f;
-            entity_.position_.y_ = 180.0f + std::sinf (Time::now ().as_seconds ()) * 100.0f;
+            //entity_.position_.x_ = 300.0f + std::cosf (Time::now ().as_seconds ()) * 150.0f;
+            //entity_.position_.y_ = 180.0f + std::sinf (Time::now ().as_seconds ()) * 100.0f;
             for (int i = 0; i < players_.size (); i++) {
-                if (players_[i].points == 5){
+                if (players_[i].hp == 0){
                     gameState = gameplay::GameState::Exit;
                         break;
                 }

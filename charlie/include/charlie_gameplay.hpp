@@ -10,6 +10,7 @@ namespace charlie {
       struct Entity {
          Vector2 position_;
          int32 entityID;
+         Color entityColor;
       };
 
       enum class EventStates {
@@ -48,7 +49,8 @@ namespace charlie {
          charlie::DynamicArray<ReliableMessage> eventQueue;
          Vector2 position_;
          int32 playerID;
-         int points;
+         int hp;
+         Color playerColor;
       };
 
       struct ComponentBase {

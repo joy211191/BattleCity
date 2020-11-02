@@ -78,6 +78,7 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
 
     Random random_;
     charlie::DynamicArray<gameplay::Player> players_;
+    Color playerColors[4];
     Vector2 playerStartPositions[4];
     uint8 player_input_bits_[4];
 

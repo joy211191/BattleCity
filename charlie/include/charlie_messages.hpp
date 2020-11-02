@@ -22,8 +22,7 @@ namespace charlie {
 
       struct NetworkMessageServerTick {
          NetworkMessageServerTick();
-         explicit NetworkMessageServerTick(const int64  server_time,
-                                           const uint32 server_tick);
+         explicit NetworkMessageServerTick(const int64  server_time,   const uint32 server_tick,const int32 playerID);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -41,11 +40,12 @@ namespace charlie {
          uint8 type_;
          int64 server_time_;
          uint32 server_tick_;
+         int32 player_ID;
       };
 
       struct NetworkMessageEntityState {
          NetworkMessageEntityState();
-         explicit NetworkMessageEntityState(const Vector2 &position);
+         explicit NetworkMessageEntityState(const Vector2 &position,const int32 &entID);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -62,6 +62,7 @@ namespace charlie {
 
          uint8 type_;
          Vector2 position_;
+         int32 entityID;
       };
 
       struct NetworkMessageInputCommand {

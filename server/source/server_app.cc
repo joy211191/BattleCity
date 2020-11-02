@@ -14,11 +14,6 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
 
     gameState = gameplay::GameState::Searching;
 
-    playerStartPositions[0] = Vector2 (window_.width_ / 2, 0);
-    playerStartPositions[1] = Vector2 (window_.width_, window_.height_ / 2);
-    playerStartPositions[2] = Vector2 (window_.width_ / 2, window_.height_);
-    playerStartPositions[3] = Vector2 (0, window_.height_ / 2);
-
     playerColors[0] = Color::Red;
     playerColors[1] = Color::Green;
     playerColors[2] = Color::Blue;
@@ -28,7 +23,7 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
 bool ServerApp::on_init () {
     network_.set_send_rate (Time (1.0 / 10.0));
     network_.set_allow_connections (true);
-    network_.set_connection_limit (16);
+    network_.set_connection_limit (4);
     if (!network_.initialize (network::IPAddress (network::IPAddress::ANY_HOST, 54345))) {
         return false;
     }
@@ -40,6 +35,11 @@ bool ServerApp::on_init () {
         players_[i].position_ = playerStartPositions[i];
         players_[i].playerColor = playerColors[i];
     }
+
+    playerStartPositions[0] = Vector2 (window_.width_ / 2, 0);
+    playerStartPositions[1] = Vector2 (window_.width_, window_.height_ / 2);
+    playerStartPositions[2] = Vector2 (window_.width_ / 2, window_.height_);
+    playerStartPositions[3] = Vector2 (0, window_.height_ / 2);
     return true;
 }
 
@@ -125,8 +125,8 @@ void ServerApp::on_draw () {
     case gameplay::GameState::Gameplay: {
         renderer_.clear ({ 0.4f, 0.3f, 0.2f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 2, "SERVER");
-        renderer_.render_rectangle_fill ({ static_cast<int32>(send_position_.x_), static_cast<int32>(send_position_.y_),  20, 20 }, Color::Yellow);
-        renderer_.render_rectangle_fill ({ static_cast<int32>(entity_.position_.x_), static_cast<int32>(entity_.position_.y_),  20, 20 }, Color::Red);
+        //renderer_.render_rectangle_fill ({ static_cast<int32>(send_position_.x_), static_cast<int32>(send_position_.y_),  20, 20 }, Color::Yellow);
+        //renderer_.render_rectangle_fill ({ static_cast<int32>(entity_.position_.x_), static_cast<int32>(entity_.position_.y_),  20, 20 }, Color::Red);
         for (int i = 0; i < players_.size (); i++) {
             renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, players_[i].playerColor);
         }
@@ -154,7 +154,9 @@ void ServerApp::on_connect (network::Connection* connection) {
         tempPlayer.playerID = id;
         players_.push_back (tempPlayer);
     }
-    connection->set_state (network::Connection::State::Rejected);
+    else {
+        connection->set_state (network::Connection::State::Rejected);
+    }
 }
 
 void ServerApp::on_disconnect (network::Connection* connection) {
@@ -203,13 +205,18 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
 void ServerApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
     auto id = clients_.find_client ((uint64)connection);
     {
-        network::NetworkMessageServerTick message (Time::now ().as_ticks (), tick_);
-        if (!message.write (writer)) {
-            assert (!"failed to write message!");
+        for (int i = 0; i < 4; i++) {
+            if (id == players_[i].playerID) {
+                network::NetworkMessageServerTick message (Time::now ().as_ticks (), tick_, players_[i].playerID);
+                if (!message.write (writer)) {
+                    assert (!"failed to write message!");
+                }
+                break;
+            }
         }
     }
     {
-        for (int i = 0; i < players_.size(); i++) {
+        for (int i = 0; i < players_.size (); i++) {
             if (id == players_[i].playerID) {
                 if (!eventQueue.empty ()) {
                     charlie::gameplay::ReliableMessage temp;
@@ -218,14 +225,13 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
                     players_[i].eventQueue.push_back (temp);
                 }
                 send_position_ = playerStartPositions[i];
-                network::NetworkMessagePlayerState message (players_[i].position_,players_[i].playerID);
+                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }
             }
             else {
-                send_position_ = entity_.position_;
-                network::NetworkMessageEntityState message (entity_.position_);
+                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }

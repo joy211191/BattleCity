@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <charlie_network.hpp>
 #include <charlie_protocol.hpp>
+using namespace std;
 
 template <typename T, std::size_t N>
 constexpr auto array_size(T(&)[N])
@@ -18,9 +19,15 @@ ClientApp::ClientApp()
    , tickrate_(1.0 / 60.0)
    , input_bits_(0)
 {
+
     globalTick = 0;
     recievedServerTick = 0;
     gameState = gameplay::GameState::Searching;
+    playerColors[0] = Color::Red;
+    playerColors[1] = Color::Green;
+    playerColors[2] = Color::Blue;
+    playerColors[3] = Color::Yellow;
+
 }
 
 bool ClientApp::on_init()
@@ -31,6 +38,17 @@ bool ClientApp::on_init()
    }
 
    connection_.set_listener(this);
+   playerStartPositions[0] = Vector2 (window_.width_ / 2, 0);
+   playerStartPositions[1] = Vector2 (window_.width_, window_.height_ / 2);
+   playerStartPositions[2] = Vector2 (window_.width_ / 2, window_.height_);
+   playerStartPositions[3] = Vector2 (0, window_.height_ / 2);
+   for (int i = 0; i < 4; i++) {
+       if (i==localPlayer.playerID) {
+           player_[i].playerColor = playerColors[i];
+           player_[i].position_ = playerStartPositions[i];
+           break;
+       }
+   }
    return true;
 }
 
@@ -46,14 +64,15 @@ bool ClientApp::on_tick (const Time& dt) {
     switch (gameState) {
     case gameplay::GameState::Searching: {
         if (!serverFound)
-            serverFound=ServerDiscovery();
+            serverFound = ServerDiscovery ();
         if (serverFound) {
-            if (keyboard_.pressed (Keyboard::Key::Space)&&(connection_.state_==network::Connection::State::Invalid||connection_.is_disconnected())) {
+            if (keyboard_.pressed (Keyboard::Key::Space) && (connection_.state_ == network::Connection::State::Invalid || connection_.is_disconnected ())) {
                 connection_.connect (serverIP);
             }
         }
         if (connection_.is_connected ()) {
             gameState = gameplay::GameState::Gameplay;
+
         }
         break;
     }
@@ -67,65 +86,72 @@ bool ClientApp::on_tick (const Time& dt) {
                 if (positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
                     positionHistory.erase (positionHistory.begin ());
                 }
-                for (auto &ent:entity_) {
-                    float distance = Vector2::distance (positionHistory.back ().position, ent.position_);
-                    ent.position_ = Vector2::lerp (ent.position_, positionHistory.back ().position, tickrate_.as_seconds () * 10);
+                for (int i = 0; i < positionHistory.size (); i++) {
+                    for (int j = 0; j < 3; j++)
+                        if (entity_[j].entityID == positionHistory[i].ID){
+                            entity_[j].position_ = positionHistory[i].position;
+                        }
                 }
             }
+
             input_bits_ = 0;
-            if (player_.position_.y_ > 0) {
-                if (keyboard_.down (Keyboard::Key::W)) {
-                    input_bits_ |= (1 << int32 (gameplay::Action::Up));
-                }
-            }
-            if (player_.position_.y_ < window_.height_) {
-                if (keyboard_.down (Keyboard::Key::S)) {
-                    input_bits_ |= (1 << int32 (gameplay::Action::Down));
-                }
-            }
-            if (player_.position_.x_ > 0) {
-                if (keyboard_.down (Keyboard::Key::A)) {
-                    input_bits_ |= (1 << int32 (gameplay::Action::Left));
-                }
-            }
-            if (player_.position_.x_ < window_.width_) {
-                if (keyboard_.down (Keyboard::Key::D)) {
-                    input_bits_ |= (1 << int32 (gameplay::Action::Right));
-                }
-            }
-            if (keyboard_.down (Keyboard::Key::Space)) {
-                input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
-            }
+            for (int i = 0; i < 4; i++) {
+                if (player_[i].playerID == localPlayer.playerID) {
+                    if (player_[i].position_.y_ > 0) {
+                        if (keyboard_.down (Keyboard::Key::W)) {
+                            input_bits_ |= (1 << int32 (gameplay::Action::Up));
+                        }
+                    }
+                    if (player_[i].position_.y_ < window_.height_) {
+                        if (keyboard_.down (Keyboard::Key::S)) {
+                            input_bits_ |= (1 << int32 (gameplay::Action::Down));
+                        }
+                    }
+                    if (player_[i].position_.x_ > 0) {
+                        if (keyboard_.down (Keyboard::Key::A)) {
+                            input_bits_ |= (1 << int32 (gameplay::Action::Left));
+                        }
+                    }
+                    if (player_[i].position_.x_ < window_.width_) {
+                        if (keyboard_.down (Keyboard::Key::D)) {
+                            input_bits_ |= (1 << int32 (gameplay::Action::Right));
+                        }
+                    }
+                    if (keyboard_.down (Keyboard::Key::Space)) {
+                        input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
+                    }
 
-            const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
-            const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
-            const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
-            const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
-            const bool player_move_right = input_bits_ & (1 << int32 (gameplay::Action::Right));
+                    const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
+                    const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
+                    const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
+                    const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
+                    const bool player_move_right = input_bits_ & (1 << int32 (gameplay::Action::Right));
 
-            Vector2 direction;
-            if (player_move_up) {
-                direction.y_ -= 1.0f;
+                    Vector2 direction;
+                    if (player_move_up) {
+                        direction.y_ -= 1.0f;
+                    }
+                    if (player_move_down) {
+                        direction.y_ += 1.0f;
+                    }
+                    if (player_move_left) {
+                        direction.x_ -= 1.0f;
+                    }
+                    if (player_move_right) {
+                        direction.x_ += 1.0f;
+                    }
+                    const float speed = 100.0;
+                    if (direction.length () > 0.0f) {
+                        direction.normalize ();
+                        player_[i].position_ = Vector2::lerp (player_[i].position_, player_[i].position_ + direction * speed, tickrate_.as_seconds ());
+                    }
+                    InputPrediction temp;
+                    temp.inputBits = input_bits_;
+                    temp.tick = globalTick;
+                    temp.calculatedPosition = player_[i].position_;
+                    inputLibrary.push_back (temp);
+                }
             }
-            if (player_move_down) {
-                direction.y_ += 1.0f;
-            }
-            if (player_move_left) {
-                direction.x_ -= 1.0f;
-            }
-            if (player_move_right) {
-                direction.x_ += 1.0f;
-            }
-            const float speed = 100.0;
-            if (direction.length () > 0.0f) {
-                direction.normalize ();
-                player_.position_ = Vector2::lerp (player_.position_, player_.position_ + direction * speed, tickrate_.as_seconds ());
-            }
-            InputPrediction temp;
-            temp.inputBits = input_bits_;
-            temp.tick = globalTick;
-            temp.calculatedPosition = player_.position_;
-            inputLibrary.push_back (temp);
             break;
 
         }
@@ -150,10 +176,10 @@ void ClientApp::on_draw () {
     case gameplay::GameState::Gameplay: {
         renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
-        for (auto &ent:entity_) {
-            renderer_.render_rectangle_fill ({ int32 (ent.position_.x_), int32 (ent.position_.y_), 20, 20 }, ent.entityColor);
+        for (int i = 0; i < 4; i++) {
+            if(player_[i].playerID==localPlayer.playerID)
+                renderer_.render_rectangle_fill ({ int32 (player_[i].position_.x_), int32 (player_[i].position_.y_), 20, 20 }, player_[i].playerColor);
         }
-        renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
         break;
     }
     case charlie::gameplay::GameState::Exit: {
@@ -179,6 +205,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 
             const Time current = Time (message.server_time_);
             recievedServerTick = message.server_tick_;
+            localPlayer.playerID = message.player_ID;
             break;
         }
 
@@ -191,7 +218,13 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             PositionHistory temp;
             temp.position = message.position_;
             temp.tick = recievedServerTick;
+            temp.ID = message.entityID;
             positionHistory.push_back (temp);
+            //for (int i = 0; i < 4; i++) {
+            //    if (message.entityID == entity_[i].entityID) {
+            //        entity_[i].position_ = message.position_;
+            //    }
+            //}
             break;
         }
 
@@ -201,21 +234,14 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             if (!message.read (reader)) {
                 assert (!"could not read message!");
             }
-
-            if (message.playerID == player_.playerID) {
-                player_.position_ = message.position_;
-            }
-            else {
-                for (auto& en : entity_) {
-                    if (en.entityID == message.playerID) {
-                        en.position_ = message.position_;
-                        break;
-                    }
+            localPlayer.playerID = message.playerID;
+            for (int i = 0; i < 4; i++) {
+                if (message.playerID == player_[i].playerID) {
+                    player_[i].position_ = message.position_;
                 }
             }
             break;
-        } 
-
+        }
         default:
         {
             assert (!"unknown message type received from server!");
@@ -225,9 +251,13 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 }
 
 void ClientApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
-    network::NetworkMessageInputCommand command (input_bits_,player_.playerID);
-    if (!command.write (writer)) {
-        assert (!"could not write network command!");
+    for (int i = 0; i < 4; i++) {
+        if (player_[i].playerID == localPlayer.playerID) {
+            network::NetworkMessageInputCommand command (input_bits_, player_[i].playerID);
+            if (!command.write (writer)) {
+                assert (!"could not write network command!");
+            }
+        }
     }
 }
 

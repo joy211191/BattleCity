@@ -42,14 +42,18 @@ struct ClientApp final : Application, network::IConnectionListener {
    Time accumulator_;
 
    uint8 input_bits_;
-   gameplay::Player player_;
-   gameplay::Entity entity_[3];
+   gameplay::Player player_[4];
+   gameplay::Entity entity_[4];
+   gameplay::Player localPlayer;
 
    class PositionHistory {
    public:
+	   int32 ID;
 	   Vector2 position;
 	   uint32 tick;
    };
+
+   Vector2 playerStartPositions[4];
 
    charlie::DynamicArray<PositionHistory> positionHistory;
 
@@ -63,6 +67,7 @@ struct ClientApp final : Application, network::IConnectionListener {
 
    uint32 globalTick;
    uint32 recievedServerTick;
+   Color playerColors[4];
 
    network::UDPSocket socket;
    network::IPAddress serverIP;

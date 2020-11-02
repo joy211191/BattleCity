@@ -8,9 +8,10 @@
 namespace charlie {
    namespace gameplay {
       struct Entity {
-         Vector2 position_;
-         int32 entityID;
-         Color entityColor;
+          Vector2 position_;
+          int32 entityID;
+          uint8 hp;
+          Color entityColor;
       };
 
       enum class EventStates {

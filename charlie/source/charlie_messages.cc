@@ -13,10 +13,11 @@ namespace charlie {
       }
 
       NetworkMessageServerTick::NetworkMessageServerTick(const int64  server_time,
-                                                         const uint32 server_tick)
+                                                         const uint32 server_tick,const int32 pID)
          : type_(NETWORK_MESSAGE_SERVER_TICK)
          , server_time_(server_time)
-         , server_tick_(server_tick)
+         , server_tick_(server_tick),
+          player_ID(pID)
       {
       }
 
@@ -35,9 +36,10 @@ namespace charlie {
       {
       }
 
-      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position)
+      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position,const int32 &id)
          : type_(NETWORK_MESSAGE_ENTITY_STATE)
-         , position_(position)
+         , position_(position),
+          entityID(id)
       {
       }
 

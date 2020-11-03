@@ -77,16 +77,18 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     Vector2 playerStartPositions[4];
     
     gameplay::Entity entity_;
-    Vector2 send_position_;
 
     Random random_;
     charlie::DynamicArray<gameplay::Player> players_;
-    Color playerColors[4];
     uint8 player_input_bits_[4];
+
+    Color playerColors[4];
 
     gameplay::GameState gameState;
 
     charlie::DynamicArray<gameplay::Event> eventQueue;
+
+    bool CollisionCheck (gameplay::Player playerA,gameplay::Player playerB);
 };
 
 #endif // !SERVER_APP_HPP_INCLUDED

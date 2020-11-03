@@ -14,6 +14,7 @@ namespace charlie {
           Color entityColor;
       };
 
+
       enum class EventStates {
           PlayerDeath,
           PlayerSpawn,
@@ -36,6 +37,7 @@ namespace charlie {
 
       enum class GameState {
           Searching,
+          Setup,
           Gameplay,
           Exit,
       };

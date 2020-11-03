@@ -844,7 +844,7 @@ namespace charlie {
          //       packet.ticks_);
 
          if (listener_) {
-            listener_->on_acknowledge(this, acknowledge_);
+            listener_->on_acknowledge(this, packet.acknowledge_);
             // todo: parse bits and let listener know
          } 
 

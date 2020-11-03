@@ -42,20 +42,21 @@ struct ClientApp final : Application, network::IConnectionListener {
    Time accumulator_;
 
    uint8 input_bits_;
-   gameplay::Player player_[4];
-   gameplay::Entity entity_[4];
-   gameplay::Player localPlayer;
+   gameplay::Player player_;
+   gameplay::Entity entity_[3];
 
-   class PositionHistory {
+   struct PositionHistory {
    public:
 	   int32 ID;
 	   Vector2 position;
 	   uint32 tick;
    };
 
+	charlie::DynamicArray<PositionHistory> positionHistory;
+   const float speed = 100.0;
    Vector2 playerStartPositions[4];
 
-   charlie::DynamicArray<PositionHistory> positionHistory;
+
 
    class InputPrediction {
    public:
@@ -67,13 +68,15 @@ struct ClientApp final : Application, network::IConnectionListener {
 
    uint32 globalTick;
    uint32 recievedServerTick;
+
    Color playerColors[4];
 
    network::UDPSocket socket;
    network::IPAddress serverIP;
    bool ServerDiscovery ();
    bool serverFound=false;
-  
+   int8 iterator;
+   bool idApplied;
 };
 
 #endif // !CLIENT_APP_HPP_INCLUDED

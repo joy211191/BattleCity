@@ -21,7 +21,7 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
 }
 
 bool ServerApp::on_init () {
-    network_.set_send_rate (Time (1.0 / 10.0));
+    network_.set_send_rate (Time (1.0 / 20.0));
     network_.set_allow_connections (true);
     network_.set_connection_limit (4);
     if (!network_.initialize (network::IPAddress (network::IPAddress::ANY_HOST, 54345))) {
@@ -242,13 +242,13 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
                     temp.sequenceNumber = sequence;
                     players_[i].eventQueue.push_back (temp);
                 }
-                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID,playerColors[i].r_, playerColors[i].g_, playerColors[i].b_);
+                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }
             }
             else {
-                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID, playerColors[i].r_, playerColors[i].g_, playerColors[i].b_);
+                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }

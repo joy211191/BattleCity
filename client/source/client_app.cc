@@ -36,7 +36,7 @@ bool ClientApp::on_init()
    for (int i = 0; i < 3; i++) {
        entity_[i].entityID = 999;
    }
-   network_.set_send_rate(Time(1.0 / 10.0));
+   network_.set_send_rate(Time(1.0 / 60.0));
    if (!network_.initialize({})) {
       return false;
    }
@@ -72,21 +72,26 @@ bool ClientApp::on_tick (const Time& dt) {
         }
         break;
     }
+
     case gameplay::GameState::Gameplay: {
         accumulator_ += dt;
         while (accumulator_ >= tickrate_) {
             globalTick = recievedServerTick;
             accumulator_ -= tickrate_;
-            if (positionHistory.size () > 0) {
-                for (int j = 0; j < 3; j++) {
-                    if (positionHistory.back().ID== entity_[j].entityID) {
-                        entity_[j].position_ = Vector2::lerp (entity_[j].position_, positionHistory.back().position, speed*tickrate_.as_seconds ());
-                        break;
+            for (auto &en:entity_) {
+                if (en.entityID<4&& en.positionHistory.size () > 4) {
+                    if (recievedServerTick - en.positionHistory[0].tick > 20000) {
+                        en.positionHistory.erase (en.positionHistory.begin ());
+                    }
+                    else {
+                        en.position_ = Vector2::lerp (en.position_, en.positionHistory[0].position, (float)((globalTick-en.positionHistory[0].tick)*tickrate_.as_milliseconds()));
+                    }
+                    for (int i = 1;i< en.positionHistory.size (); i++) {
+                        if (recievedServerTick - en.positionHistory[i].tick < 20000) {
+                            en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, (float)((globalTick - en.positionHistory[0].tick) * tickrate_.as_milliseconds ()));
+                        }
                     }
                 }
-                if (positionHistory.size()>0&& positionHistory[0].tick - tickrate_.as_milliseconds () > 200) {
-                    positionHistory.erase (positionHistory.begin ());
-                }           
             }
 
             input_bits_ = 0;
@@ -231,26 +236,21 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             recievedServerTick = message.server_tick_;
             break;
         }
-
         case network::NETWORK_MESSAGE_ENTITY_STATE:
         {
             network::NetworkMessageEntityState message;
             if (!message.read (reader)) {
                 assert (!"could not read message!");
             }
-            PositionHistory temp;
-            temp.position = message.position_;
-            temp.tick = recievedServerTick;
-            temp.ID = message.entityID;
-            positionHistory.push_back (temp);
+
             for (int i = 0; i < 3; i++) {
                 if (entity_[i].entityID == message.entityID) {
+                    gameplay::PositionHistory temp;
+                    temp.position = message.position_;
+                    temp.tick = recievedServerTick;
+                    entity_[i].positionHistory.push_back (temp);
                     entity_[i].position_ = message.position_;
-                    Color tempColor;
-                    tempColor.r_ = message.red;
-                    tempColor.g_ = message.green;
-                    tempColor.b_ = message.blue;
-                    entity_[i].entityColor = tempColor;
+                    entity_[i].entityColor = playerColors[entity_[i].entityID];
                     break;
                 }
             }
@@ -265,10 +265,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             if (message.playerID == player_.playerID) {
                 player_.position_ = message.position_;
                 Color tempColor;
-                tempColor.r_ = message.red;
-                tempColor.g_ = message.green;
-                tempColor.b_ = message.blue;
-                player_.playerColor = tempColor;
+                player_.playerColor = playerColors[player_.playerID];
             }
             break;
         }

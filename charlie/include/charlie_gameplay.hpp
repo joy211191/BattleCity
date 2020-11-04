@@ -7,13 +7,19 @@
 
 namespace charlie {
    namespace gameplay {
-      struct Entity {
+       struct PositionHistory {
+       public:
+           Vector2 position;
+           uint32 tick;
+       };
+
+       struct Entity {
           Vector2 position_;
           int32 entityID;
           uint8 hp;
           Color entityColor;
+          charlie::DynamicArray<PositionHistory> positionHistory;
       };
-
 
       enum class EventStates {
           PlayerDeath,

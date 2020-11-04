@@ -45,14 +45,7 @@ struct ClientApp final : Application, network::IConnectionListener {
    gameplay::Player player_;
    gameplay::Entity entity_[3];
 
-   struct PositionHistory {
-   public:
-	   int32 ID;
-	   Vector2 position;
-	   uint32 tick;
-   };
 
-	charlie::DynamicArray<PositionHistory> positionHistory;
    const float speed = 100.0;
    Vector2 playerStartPositions[4];
 

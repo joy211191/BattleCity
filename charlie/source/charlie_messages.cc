@@ -2,6 +2,7 @@
 
 #include "charlie_messages.hpp"
 #include "charlie_network.hpp"
+#include "charlie_gameplay.hpp"
 
 namespace charlie {
    namespace network {
@@ -41,13 +42,10 @@ namespace charlie {
       {
       }
 
-      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position,const int32 &id, const float& entityColor_red, const float& entityColor_green, const float& entityColor_blue)
+      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position,const int32 &id)
          : type_(NETWORK_MESSAGE_ENTITY_STATE)
          , position_(position),
-          entityID(id),
-          red (entityColor_red),
-          green (entityColor_green),
-          blue (entityColor_blue)
+          entityID(id)
       {
       }
 
@@ -83,19 +81,16 @@ namespace charlie {
       {
          return serialize(writer);
       }
+
+      NetworkMessagePlayerState::NetworkMessagePlayerState (const Vector2& position, const int32& id)
+          : type_ (NETWORK_MESSAGE_PLAYER_STATE)
+          , position_ (position)
+          , playerID (id) {
+      }
+
      
       NetworkMessagePlayerState::NetworkMessagePlayerState()
          : type_(NETWORK_MESSAGE_PLAYER_STATE)
-      {
-      }
-
-      NetworkMessagePlayerState::NetworkMessagePlayerState (const Vector2& position, const int32& id, const float& playerColor_red, const float& playerColor_green, const float& playerColor_blue)
-          : type_ (NETWORK_MESSAGE_PLAYER_STATE)
-          , position_ (position)
-          , playerID (id),
-          red (playerColor_red),
-          green (playerColor_green),
-          blue (playerColor_blue)
       {
       }
 

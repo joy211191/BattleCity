@@ -16,7 +16,7 @@ constexpr auto array_size(T(&)[N])
 ClientApp::ClientApp()
    : mouse_(window_.mouse_)
    , keyboard_(window_.keyboard_)
-   , tickrate_(1.0 /  60.0)
+   , tickrate_(1.0 /  20.0)
    , input_bits_(0)
 {
     globalTick = 0;
@@ -84,11 +84,13 @@ bool ClientApp::on_tick (const Time& dt) {
                         en.positionHistory.erase (en.positionHistory.begin ());
                     }
                     else {
-                        en.position_ = Vector2::lerp (en.position_, en.positionHistory[0].position, (float)((globalTick-en.positionHistory[0].tick)*tickrate_.as_milliseconds()));
+                        en.position_ = Vector2::lerp (en.position_, en.positionHistory[0].position, (en.lastTick-en.positionHistory[0].tick+recievedServerTick)*tickrate_.as_milliseconds());
+                        en.lastTick = en.positionHistory[0].tick;
                     }
                     for (int i = 1;i< en.positionHistory.size (); i++) {
                         if (recievedServerTick - en.positionHistory[i].tick < 20000) {
-                            en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, (float)((globalTick - en.positionHistory[0].tick) * tickrate_.as_milliseconds ()));
+                            en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, (en.lastTick - en.positionHistory[i].tick+recievedServerTick) * tickrate_.as_milliseconds());
+                            en.lastTick = en.positionHistory[i].tick;
                         }
                     }
                 }
@@ -139,6 +141,9 @@ bool ClientApp::on_tick (const Time& dt) {
             if (player_move_right) {
                 direction.x_ += 1.0f;
             }
+            if (player_shoot) {
+
+            }
             if (direction.length () > 0.0f) {
                 direction.normalize ();
                 player_.position_ = Vector2::lerp (player_.position_, player_.position_ + direction * speed, tickrate_.as_seconds ());
@@ -148,7 +153,7 @@ bool ClientApp::on_tick (const Time& dt) {
             temp.tick = globalTick;
             temp.calculatedPosition = player_.position_;
             inputLibrary.push_back (temp);
-            if (inputLibrary[0].tick - tickrate_.as_milliseconds() > 200) {
+            if (inputLibrary[0].tick - tickrate_.as_milliseconds() > 20000) {
                 inputLibrary.erase (inputLibrary.begin ());
             }
             break;
@@ -160,6 +165,13 @@ bool ClientApp::on_tick (const Time& dt) {
     }
     }
     return true;
+}
+
+bool ClientApp::CollisionCheck (gameplay::Player playerA, gameplay::Player playerB) {
+    if (playerA.position_.x_<playerB.position_.x_ + 20 && playerA.position_.x_ + 20 >playerB.position_.x_ && playerA.position_.y_<playerB.position_.y_ + 20 && playerA.position_.y_ + 20>playerB.position_.y_)
+        return true;
+    else
+        return false;
 }
 
 void ClientApp::on_draw () {
@@ -200,10 +212,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             if (!message.read (reader)) {
                 assert (!"could not read message!");
             }
-            if (player_.playerID > 4) {
-                player_.playerID = message.playerID;
-            }
             if (!idApplied) {
+                player_.playerID = message.playerID;
                 switch (player_.playerID) {
                     case 0: {
                         entity_[0].entityID = 1;

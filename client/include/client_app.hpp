@@ -70,6 +70,8 @@ struct ClientApp final : Application, network::IConnectionListener {
    bool serverFound=false;
    int8 iterator;
    bool idApplied;
+
+   bool CollisionCheck (gameplay::Player playerA, gameplay::Player playerB);
 };
 
 #endif // !CLIENT_APP_HPP_INCLUDED

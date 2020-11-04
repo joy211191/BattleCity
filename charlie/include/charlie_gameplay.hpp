@@ -18,6 +18,7 @@ namespace charlie {
           int32 entityID;
           uint8 hp;
           Color entityColor;
+          uint32 lastTick;
           charlie::DynamicArray<PositionHistory> positionHistory;
       };
 

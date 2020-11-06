@@ -1,4 +1,3 @@
-// client_app.hpp
 
 #ifndef CLIENT_APP_HPP_INCLUDED
 #define CLIENT_APP_HPP_INCLUDED
@@ -9,7 +8,7 @@
 using namespace charlie;
 
 
-class ConnectionHandler:public network::Connection {
+class ConnectionHandler :public network::Connection {
 public:
 	void on_rejected (const uint8 reason);
 
@@ -45,11 +44,25 @@ struct ClientApp final : Application, network::IConnectionListener {
    gameplay::Player player_;
    gameplay::Entity entity_[3];
 
+   gameplay::Bullet bullets[4];
+
 
    const float speed = 100.0;
    Vector2 playerStartPositions[4];
 
+   struct DataStruct {
+   public:
+	   int packetsSent;
+	   int packetsDelivered;
+	   int packetsLost;
+	   int packetsReceived;
+	   int sequenceNumber;
+	   float packetLoss;
+	   bool detailsOverlay;
+	   charlie::DynamicArray<int> sequenceStack;
+   };
 
+   DataStruct networkData;
 
    class InputPrediction {
    public:

@@ -12,6 +12,27 @@ namespace charlie {
       //{
       //}
 
+       NetworkMessageShoot::NetworkMessageShoot(){}
+
+       NetworkMessageShoot::NetworkMessageShoot (const uint8  active, const uint32 server_tick, const int32 id,const Vector2 position, const Vector2 shootDirection)
+           :type_(NETWORK_MESSAGE_SHOOT),
+           bulletActive(active),
+           server_tick_(server_tick),
+           playerID(id),
+           bulletPosition(position),
+           direction(shootDirection)
+       {
+
+       }
+
+       bool NetworkMessageShoot::read (NetworkStreamReader& reader) {
+           return serialize (reader);
+       }
+
+       bool NetworkMessageShoot::write (NetworkStreamWriter& writer) {
+           return serialize (writer);
+       }
+
       NetworkMessageServerTick::NetworkMessageServerTick()
          : type_(NETWORK_MESSAGE_SERVER_TICK)
          , server_time_(0)
@@ -42,10 +63,11 @@ namespace charlie {
       {
       }
 
-      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position,const int32 &id)
+      NetworkMessageEntityState::NetworkMessageEntityState(const Vector2 &position,const int32 &id,const uint8 &alive)
          : type_(NETWORK_MESSAGE_ENTITY_STATE)
          , position_(position),
-          entityID(id)
+          entityID(id),
+          entityAlive(alive)
       {
       }
 
@@ -65,10 +87,11 @@ namespace charlie {
       {
       }
 
-      NetworkMessageInputCommand::NetworkMessageInputCommand(uint8 bits, int32 playerID)
-         : type_(NETWORK_MESSAGE_INPUT_COMMAND)
-         , bits_(bits),
-          id(playerID)
+      NetworkMessageInputCommand::NetworkMessageInputCommand (uint8 bits, int32 playerID,  int32 sequence)
+          : type_ (NETWORK_MESSAGE_INPUT_COMMAND)
+          , bits_ (bits),
+          id (playerID),
+          sequenceNumber (sequence)
       {
       }
 
@@ -82,10 +105,12 @@ namespace charlie {
          return serialize(writer);
       }
 
-      NetworkMessagePlayerState::NetworkMessagePlayerState (const Vector2& position, const int32& id)
+      NetworkMessagePlayerState::NetworkMessagePlayerState (const Vector2& position, const int32& id,const uint8 &alive)
           : type_ (NETWORK_MESSAGE_PLAYER_STATE)
           , position_ (position)
-          , playerID (id) {
+          , playerID (id),
+          playerAlive(alive)
+      {
       }
 
      

@@ -8,6 +8,7 @@
 #include <ShellScalingApi.h> // SetProcessDpiAwareness
 #include <gl/GL.h>
 #include <cmath>
+#include <string>
 
 struct input_t {
    charlie::Mouse mouse_;

@@ -1,4 +1,3 @@
-// server_app.hpp
 
 #ifndef SERVER_APP_HPP_INCLUDED
 #define SERVER_APP_HPP_INCLUDED
@@ -66,7 +65,7 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     virtual void on_acknowledge (network::Connection* connection, const uint16 sequence);
     virtual void on_receive (network::Connection* connection, network::NetworkStreamReader& reader);
     virtual void on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer);
-    
+
     Keyboard keyboard;
 
     const Time tickrate_;
@@ -75,12 +74,15 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     ClientList clients_;
 
     Vector2 playerStartPositions[4];
-    
+
     gameplay::Entity entity_;
 
     Random random_;
     charlie::DynamicArray<gameplay::Player> players_;
     uint8 player_input_bits_[4];
+    gameplay::Bullet bullets[4];
+
+    const float bulletSpeed = 150.0;
 
     Color playerColors[4];
 
@@ -88,7 +90,6 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
 
     charlie::DynamicArray<gameplay::Event> eventQueue;
 
-    bool CollisionCheck (gameplay::Player playerA,gameplay::Player playerB);
+    bool CollisionCheck (gameplay::Player playerA, gameplay::Player playerB);
 };
-
 #endif // !SERVER_APP_HPP_INCLUDED

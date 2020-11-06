@@ -14,13 +14,22 @@ namespace charlie {
        };
 
        struct Entity {
+           bool alive;
           Vector2 position_;
           int32 entityID;
-          uint8 hp;
           Color entityColor;
           uint32 lastTick;
           charlie::DynamicArray<PositionHistory> positionHistory;
       };
+
+       struct Bullet {
+           bool active;
+           Vector2 position_;
+           int32 bulletID;
+           uint32 lastTick;
+           charlie::DynamicArray<PositionHistory> positionHistory;
+           Vector2 direction;
+       };
 
       enum class EventStates {
           PlayerDeath,
@@ -55,6 +64,7 @@ namespace charlie {
       };
 
       struct Player {
+          bool alive;
          charlie::DynamicArray<ReliableMessage> eventQueue;
          Vector2 position_;
          int32 playerID;

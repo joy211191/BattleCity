@@ -1,4 +1,3 @@
-// server_app.cc
 
 #include "server_app.hpp"
 #include <charlie_messages.hpp>
@@ -7,7 +6,8 @@
 #include <charlie.hpp>
 using namespace std;
 
-ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
+ServerApp::ServerApp () : tickrate_ (1.0 / 60.0), tick_ (0) {
+
     for (int i = 0; i < sizeof (player_input_bits_); i++) {
         player_input_bits_[i] = 0;
     }
@@ -18,9 +18,14 @@ ServerApp::ServerApp (): tickrate_ (1.0 / 60.0), tick_ (0) {
     playerColors[1] = Color::Green;
     playerColors[2] = Color::Blue;
     playerColors[3] = Color::Yellow;
+
+    for (int i = 0; i < 4; i++) {
+        bullets[i].active = false;
+    }
 }
 
 bool ServerApp::on_init () {
+
     network_.set_send_rate (Time (1.0 / 20.0));
     network_.set_allow_connections (true);
     network_.set_connection_limit (4);
@@ -44,6 +49,7 @@ bool ServerApp::on_init () {
 }
 
 void ServerApp::on_exit () {
+
 }
 
 bool ServerApp::on_tick (const Time& dt) {
@@ -62,6 +68,9 @@ bool ServerApp::on_tick (const Time& dt) {
         case gameplay::GameState::Setup: {
             for (int i = 0; i < players_.size (); i++) {
                 players_[i].position_ = playerStartPositions[i];
+                bullets[i].position_ = playerStartPositions[i];
+                players_[i].alive = true;
+                bullets[i].active = false;
             }
             gameState = gameplay::GameState::Gameplay;
             break;
@@ -94,6 +103,18 @@ bool ServerApp::on_tick (const Time& dt) {
                     tempEvent.position = players_[i].position_;
                     tempEvent.state = charlie::gameplay::EventStates::Shooting;
                     eventQueue.push_back (tempEvent);
+                    if (!bullets[i].active) {
+                        bullets[i].bulletID = i;
+                        bullets[i].active = true;
+                        Vector2 offsetPosition;
+                        offsetPosition.x_ = 10;
+                        offsetPosition.y_ = 10;
+                        bullets[i].position_ = players_[i].position_+offsetPosition;
+                        bullets[i].direction = direction;
+                        bullets[i].direction.normalize ();
+                    }
+                    if (bullets[i].position_.x_<0 || bullets[i].position_.x_>window_.width_ || bullets[i].position_.y_<0 || bullets[i].position_.y_>window_.height_)
+                        bullets[i].active = false;
                 }
                 bool playerCollided = false;
                 for (int j = 0; j < players_.size (); j++) {
@@ -108,6 +129,13 @@ bool ServerApp::on_tick (const Time& dt) {
                     }
                 }
             }
+
+            for (auto& bl : bullets) {
+                if (bl.active) {
+                    bl.position_ += bl.direction * bulletSpeed * tickrate_.as_seconds ();
+                }
+            }
+
             for (int i = 0; i < players_.size (); i++) {
                 if (players_[i].hp == 0){
                     gameState = gameplay::GameState::Exit;
@@ -148,6 +176,9 @@ void ServerApp::on_draw () {
         renderer_.render_text ({ 2, 2 }, Color::White, 2, "SERVER");
         for (int i = 0; i < players_.size (); i++) {
             renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, playerColors[i]);
+            if (bullets[i].active) {
+                renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
+            }
         }
         break;
     }
@@ -163,6 +194,7 @@ void ServerApp::on_timeout (network::Connection* connection) {
     auto id = clients_.find_client ((uint64)connection);
     // ...
     clients_.remove_client ((uint64)connection);
+    printf ("Timeout");
 }
 
 void ServerApp::on_connect (network::Connection* connection) {
@@ -178,12 +210,12 @@ void ServerApp::on_connect (network::Connection* connection) {
     }
 }
 
-
 void ServerApp::on_disconnect (network::Connection* connection) {
     connection->set_listener (nullptr);
     auto id = clients_.find_client ((uint64)connection);
     // ...
     clients_.remove_client ((uint64)connection);
+    printf ("Disconnected");
 }
 
 void ServerApp::on_acknowledge (network::Connection* connection, const uint16 sequence) {
@@ -233,6 +265,14 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
             //break;
         }
     }
+    for (int i = 0; i < 4; i++) {
+        if (bullets[i].active) {
+            network::NetworkMessageShoot message (bullets[i].active, tick_, i, bullets[i].position_,bullets[i].direction);
+            if (!message.write (writer)) {
+                assert (!"failed to write message!");
+            }
+        }
+    }
     {
         for (int i = 0; i < players_.size (); i++) {
             if (id == players_[i].playerID) {
@@ -242,13 +282,13 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
                     temp.sequenceNumber = sequence;
                     players_[i].eventQueue.push_back (temp);
                 }
-                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID);
+                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID,players_[i].alive);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }
             }
             else {
-                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID);
+                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID,players_[i].alive);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }

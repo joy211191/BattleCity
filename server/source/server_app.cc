@@ -103,14 +103,14 @@ bool ServerApp::on_tick (const Time& dt) {
                     tempEvent.position = players_[i].position_;
                     tempEvent.state = charlie::gameplay::EventStates::Shooting;
                     eventQueue.push_back (tempEvent);
-                    if (!bullets[i].active) {
+                    if (!bullets[i].active&&direction.length()>0) {
                         bullets[i].bulletID = i;
                         bullets[i].active = true;
                         Vector2 offsetPosition;
                         offsetPosition.x_ = 10;
                         offsetPosition.y_ = 10;
                         bullets[i].position_ = players_[i].position_+offsetPosition;
-                        bullets[i].direction = direction;
+                            bullets[i].direction = direction;
                         bullets[i].direction.normalize ();
                     }
                     if (bullets[i].position_.x_<0 || bullets[i].position_.x_>window_.width_ || bullets[i].position_.y_<0 || bullets[i].position_.y_>window_.height_)

@@ -86,9 +86,6 @@ bool ClientApp::on_tick (const Time& dt) {
         }
 
         case gameplay::GameState::Gameplay: {
-            for (int i = 0; i < 4; i++) {
-                printf ("Bullet %d status: %u\n", i, bullets[i].active);
-            }
             accumulator_ += dt;
             while (accumulator_ >= tickrate_) {
                 globalTick = recievedServerTick;

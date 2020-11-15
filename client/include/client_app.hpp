@@ -45,7 +45,8 @@ struct ClientApp final : Application, network::IConnectionListener {
    gameplay::Entity entity_[3];
 
    gameplay::Bullet bullets[4];
-
+   
+   Time interpolatorAccumulator;
 
    const float speed = 100.0;
    Vector2 playerStartPositions[4];

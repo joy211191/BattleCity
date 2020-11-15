@@ -90,6 +90,10 @@ bool ClientApp::on_tick (const Time& dt) {
             while (accumulator_ >= tickrate_) {
                 globalTick = recievedServerTick;
                 accumulator_ -= tickrate_;
+                if (interpolatorAccumulator.as_seconds () > tickrate_.as_seconds ())
+                    interpolatorAccumulator = Time ();
+                else
+                    interpolatorAccumulator += tickrate_;
                 for (auto& en : entity_) {
                     if (en.entityID < 4 && en.positionHistory.size () > 4) {
                         if (recievedServerTick - en.positionHistory[0].tick > 20000) {
@@ -98,7 +102,9 @@ bool ClientApp::on_tick (const Time& dt) {
                         for (int i = 0; i < en.positionHistory.size (); i++) {
                             if (recievedServerTick - en.positionHistory[i].tick < 20000) {
                                 Vector2 direction = en.positionHistory[i].position - en.position_;
-                                en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, (en.lastTick - en.positionHistory[i].tick ) * tickrate_.as_seconds () * speed * 3);
+                                const float interpolator = (en.lastTick - en.positionHistory[i].tick) * tickrate_.as_seconds ();
+                                const float t = interpolator/ accumulator_.as_seconds ();
+                                en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, t);
                                 en.lastTick = en.positionHistory[i].tick;
                             }
                         }
@@ -113,7 +119,9 @@ bool ClientApp::on_tick (const Time& dt) {
                         for (int i = 0; i < bl.positionHistory.size (); i++) {
                             if (recievedServerTick - bl.positionHistory[i].tick < 20000) {
                                 Vector2 direction = bl.positionHistory[i].position - bl.position_;
-                                bl.position_ = Vector2::lerp (bl.position_, bl.positionHistory[i].position, (bl.lastTick - bl.positionHistory[i].tick ) * tickrate_.as_seconds () * speed * 3);
+                                const float interpolator = (bl.lastTick - bl.positionHistory[i].tick) * tickrate_.as_seconds ();
+                                const float t =interpolator/ accumulator_.as_seconds ();
+                                bl.position_ = Vector2::lerp (bl.position_, bl.positionHistory[i].position, t);
                                 bl.lastTick = bl.positionHistory[i].tick;
                             }
                         }
@@ -231,6 +239,7 @@ void ClientApp::on_draw () {
             break;
         }
         case charlie::gameplay::GameState::Exit: {
+            renderer_.render_text ({ 2, 12 }, Color::White, 1, "You lost");
             break;
         }
     }

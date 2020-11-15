@@ -69,6 +69,7 @@ bool ServerApp::on_tick (const Time& dt) {
             for (int i = 0; i < players_.size (); i++) {
                 players_[i].position_ = playerStartPositions[i];
                 bullets[i].position_ = playerStartPositions[i];
+                bullets[i].bulletID = i;
                 players_[i].alive = true;
                 bullets[i].active = false;
             }
@@ -77,63 +78,52 @@ bool ServerApp::on_tick (const Time& dt) {
         }
         case gameplay::GameState::Gameplay: {
             for (int i = 0; i < players_.size (); i++) {
-                const float speed = 100.0;
-                const bool player_move_up = player_input_bits_[i] & (1 << int32 (gameplay::Action::Up));
-                const bool player_move_down = player_input_bits_[i] & (1 << int32 (gameplay::Action::Down));
-                const bool player_move_left = player_input_bits_[i] & (1 << int32 (gameplay::Action::Left));
-                const bool player_move_right = player_input_bits_[i] & (1 << int32 (gameplay::Action::Right));
-                const bool player_shoot = player_input_bits_[i] & (1 << int32 (gameplay::Action::Shoot));
+                if (players_[i].alive) {
+                    const float speed = 100.0;
+                    const bool player_move_up = player_input_bits_[i] & (1 << int32 (gameplay::Action::Up));
+                    const bool player_move_down = player_input_bits_[i] & (1 << int32 (gameplay::Action::Down));
+                    const bool player_move_left = player_input_bits_[i] & (1 << int32 (gameplay::Action::Left));
+                    const bool player_move_right = player_input_bits_[i] & (1 << int32 (gameplay::Action::Right));
+                    const bool player_shoot = player_input_bits_[i] & (1 << int32 (gameplay::Action::Shoot));
 
-                Vector2 direction;
-                if (player_move_up) {
-                    direction.y_ -= 1.0f;
-                }
-                if (player_move_down) {
-                    direction.y_ += 1.0f;
-                }
-                if (player_move_left) {
-                    direction.x_ -= 1.0f;
-                }
-                if (player_move_right) {
-                    direction.x_ += 1.0f;
-                }
-                if (player_shoot) {
-                    charlie::gameplay::Event tempEvent;
-                    tempEvent.playerID = players_[i].playerID;
-                    tempEvent.position = players_[i].position_;
-                    tempEvent.state = charlie::gameplay::EventStates::Shooting;
-                    eventQueue.push_back (tempEvent);
-                    if (!bullets[i].active&&direction.length()>0) {
-                        bullets[i].bulletID = i;
-                        bullets[i].active = true;
-                        Vector2 offsetPosition;
-                        offsetPosition.x_ = 10;
-                        offsetPosition.y_ = 10;
-                        bullets[i].position_ = players_[i].position_+offsetPosition;
+                    Vector2 direction;
+                    if (player_move_up) {
+                        direction.y_ -= 1.0f;
+                    }
+                    if (player_move_down) {
+                        direction.y_ += 1.0f;
+                    }
+                    if (player_move_left) {
+                        direction.x_ -= 1.0f;
+                    }
+                    if (player_move_right) {
+                        direction.x_ += 1.0f;
+                    }
+                    if (player_shoot && direction.length () > 0) {
+                        charlie::gameplay::Event tempEvent;
+                        tempEvent.playerID = players_[i].playerID;
+                        tempEvent.position = players_[i].position_;
+                        tempEvent.state = charlie::gameplay::EventStates::Shooting;
+                        eventQueue.push_back (tempEvent);
+                        if (!bullets[i].active) {
+                            bullets[i].bulletID = i;
+                            bullets[i].active = true;
+                            Vector2 offsetPosition;
+                            offsetPosition.x_ = 10;
+                            offsetPosition.y_ = 10;
+                            bullets[i].position_ = players_[i].position_ + offsetPosition;
                             bullets[i].direction = direction;
-                        bullets[i].direction.normalize ();
+                            bullets[i].direction.normalize ();
+                        }
                     }
-                    if (bullets[i].position_.x_<0 || bullets[i].position_.x_>window_.width_ || bullets[i].position_.y_<0 || bullets[i].position_.y_>window_.height_)
-                        bullets[i].active = false;
-                }
-                bool playerCollided = false;
-                for (int j = 0; j < players_.size (); j++) {
-                    if (players_[j].playerID != i) {
-                        playerCollided = CollisionCheck (players_[i], players_[j]);
-                    }
-                }
-                if (!playerCollided) {
                     if (direction.length () > 0.0f) {
                         direction.normalize ();
                         players_[i].position_ += direction * speed * tickrate_.as_seconds ();
                     }
                 }
             }
-
             for (auto& bl : bullets) {
-                if (bl.active) {
-                    bl.position_ += bl.direction * bulletSpeed * tickrate_.as_seconds ();
-                }
+                Bullet (bl.bulletID, bl.direction);
             }
 
             for (int i = 0; i < players_.size (); i++) {
@@ -153,11 +143,28 @@ bool ServerApp::on_tick (const Time& dt) {
     return true;
 }
 
-bool ServerApp::CollisionCheck (gameplay::Player playerA, gameplay::Player playerB) {
-    if (playerA.position_.x_<playerB.position_.x_ + 20 && playerA.position_.x_ + 20 >playerB.position_.x_ && playerA.position_.y_<playerB.position_.y_ + 20 && playerA.position_.y_ + 20>playerB.position_.y_)
+bool ServerApp::CollisionCheck (Vector2 positionA, Vector2 positionB) {
+    if (positionA.x_<positionB.x_ + 10 && positionA.x_ + 10 >positionB.x_ && positionA.y_<positionB.y_ + 10 && positionA.y_ + 10>positionB.y_)
         return true;
     else
         return false;
+}
+
+void ServerApp::Bullet (int id,Vector2 direction) {
+    if (!bullets[id].active)
+        return;
+    while (bullets[id].active) {
+        bullets[id].position_ += bullets[id].direction * bulletSpeed * tickrate_.as_seconds ();
+        if (bullets[id].position_.x_<0 || bullets[id].position_.x_>window_.width_ || bullets[id].position_.y_<0 || bullets[id].position_.y_>window_.height_)
+            bullets[id].active = false;
+        for (auto& pl : players_) {
+            if (pl.playerID!=id&& CollisionCheck (bullets[id].position_, pl.position_)) {
+                pl.alive = false;
+            }
+            else
+                pl.alive = true;
+        }
+    }
 }
 
 void ServerApp::on_draw () {
@@ -175,7 +182,8 @@ void ServerApp::on_draw () {
         renderer_.clear ({ 0.4f, 0.3f, 0.2f, 1.0f });
         renderer_.render_text ({ 2, 2 }, Color::White, 2, "SERVER");
         for (int i = 0; i < players_.size (); i++) {
-            renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, playerColors[i]);
+            if(players_[i].alive)
+                renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, playerColors[i]);
             if (bullets[i].active) {
                 renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
             }

@@ -90,6 +90,7 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
 
     charlie::DynamicArray<gameplay::Event> eventQueue;
 
-    bool CollisionCheck (gameplay::Player playerA, gameplay::Player playerB);
+    bool CollisionCheck (Vector2 positionA, Vector2 positionB);
+    void Bullet (int id, Vector2 direction);
 };
 #endif // !SERVER_APP_HPP_INCLUDED

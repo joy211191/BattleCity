@@ -92,5 +92,6 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
 
     bool CollisionCheck (Vector2 positionA, Vector2 positionB);
     void Bullet (int id, Vector2 direction);
+    int winnerID;
 };
 #endif // !SERVER_APP_HPP_INCLUDED

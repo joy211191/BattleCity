@@ -125,12 +125,20 @@ bool ServerApp::on_tick (const Time& dt) {
             for (auto& bl : bullets) {
                 Bullet (bl.bulletID, bl.direction);
             }
-
+            int temp = 0;
             for (int i = 0; i < players_.size (); i++) {
-                if (players_[i].hp == 0){
-                    gameState = gameplay::GameState::Exit;
-                        break;
+                if (players_[i].alive){
+                    temp++;
                 }
+            }
+            if (temp == 1) {
+                for (int i = 0; i < players_.size (); i++) {
+                    if (players_[i].alive) {
+                        winnerID = i;
+                        break;
+                    }
+                }
+                gameState = gameplay::GameState::Exit;
             }
             break;
         }
@@ -153,47 +161,48 @@ bool ServerApp::CollisionCheck (Vector2 positionA, Vector2 positionB) {
 void ServerApp::Bullet (int id,Vector2 direction) {
     if (!bullets[id].active)
         return;
-    while (bullets[id].active) {
+    if (bullets[id].active) {
         bullets[id].position_ += bullets[id].direction * bulletSpeed * tickrate_.as_seconds ();
         if (bullets[id].position_.x_<0 || bullets[id].position_.x_>window_.width_ || bullets[id].position_.y_<0 || bullets[id].position_.y_>window_.height_)
             bullets[id].active = false;
         for (auto& pl : players_) {
-            if (pl.playerID!=id&& CollisionCheck (bullets[id].position_, pl.position_)) {
+            printf ("%d", CollisionCheck (bullets[id].position_, pl.position_));
+            if (pl.playerID != id && CollisionCheck (bullets[id].position_, pl.position_)) {
                 pl.alive = false;
+                break;
             }
-            else
-                pl.alive = true;
         }
     }
 }
 
 void ServerApp::on_draw () {
     switch (gameState) {
-    case gameplay::GameState::Searching: {
-        renderer_.render_text ({ 5,12 }, Color::White, 1, "Waiting for Connections. 4 players needed");
-        if (players_.size () > 0) {
+        case gameplay::GameState::Searching: {
+            renderer_.render_text ({ 5,12 }, Color::White, 1, "Waiting for Connections. 4 players needed");
+            if (players_.size () > 0) {
+                for (int i = 0; i < players_.size (); i++) {
+                    renderer_.render_text_va ({ 5,22 + i * 10 }, Color::White, 1, "%d", players_[i].playerID);
+                }
+            }
+            break;
+        }
+        case gameplay::GameState::Gameplay: {
+            renderer_.clear ({ 0.4f, 0.3f, 0.2f, 1.0f });
+            renderer_.render_text ({ 2, 2 }, Color::White, 2, "SERVER");
             for (int i = 0; i < players_.size (); i++) {
-                renderer_.render_text_va ({ 5,22 + i * 10 }, Color::White, 1, "%d", players_[i].playerID);
+                if (players_[i].alive)
+                    renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, playerColors[i]);
+                if (bullets[i].active) {
+                    renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
+                }
             }
+            break;
         }
-        break;
-    }
-    case gameplay::GameState::Gameplay: {
-        renderer_.clear ({ 0.4f, 0.3f, 0.2f, 1.0f });
-        renderer_.render_text ({ 2, 2 }, Color::White, 2, "SERVER");
-        for (int i = 0; i < players_.size (); i++) {
-            if(players_[i].alive)
-                renderer_.render_rectangle_fill ({ static_cast<int32>(players_[i].position_.x_), static_cast<int32>(players_[i].position_.y_),  20, 20 }, playerColors[i]);
-            if (bullets[i].active) {
-                renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
-            }
+        case gameplay::GameState::Exit: {
+            renderer_.render_text ({ 2,2 }, Color::White, 2, "Game over");
+            renderer_.render_text_va ({ 2,12 }, playerColors[winnerID], 2, "Winner");
+            break;
         }
-        break;
-    }
-    case gameplay::GameState::Exit: {
-
-        break;
-    }
     }
 }
 
@@ -270,7 +279,6 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
             if (!message.write (writer)) {
                 assert (!"failed to write message!");
             }
-            //break;
         }
     }
     for (int i = 0; i < 4; i++) {

@@ -53,6 +53,9 @@ struct ClientApp final : Application, network::IConnectionListener {
 
    struct DataStruct {
    public:
+	   Time lastSent;
+	   Time LastRecieved;
+	   Time RTT;
 	   int packetsSent;
 	   int packetsDelivered;
 	   int packetsLost;

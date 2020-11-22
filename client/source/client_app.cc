@@ -67,7 +67,7 @@ bool ClientApp::on_tick (const Time& dt) {
         on_exit ();
         return false;
     }
-    if (keyboard_.pressed (Keyboard::Key::F3)) {
+    if (keyboard_.pressed (Keyboard::Key::Tab)) {
         networkData.detailsOverlay = !networkData.detailsOverlay;
     }
     switch (gameState) {
@@ -125,6 +125,17 @@ bool ClientApp::on_tick (const Time& dt) {
                                 bl.lastTick = bl.positionHistory[i].tick;
                             }
                         }
+                    }
+                }
+                int counter = 0;
+                if (player_.alive) {
+                    for (auto& en : entity_) {
+                        if (en.alive) {
+                            counter++;
+                        }
+                    }
+                    if (counter == 0) {
+                        gameState = gameplay::GameState::Exit;
                     }
                 }
 
@@ -201,18 +212,21 @@ bool ClientApp::on_tick (const Time& dt) {
     return true;
 }
 
-bool ClientApp::CollisionCheck (gameplay::Player playerA, gameplay::Player playerB) {
-    if (playerA.position_.x_<playerB.position_.x_ + 20 && playerA.position_.x_ + 20 >playerB.position_.x_ && playerA.position_.y_<playerB.position_.y_ + 20 && playerA.position_.y_ + 20>playerB.position_.y_)
-        return true;
-    else
-        return false;
-}
+//bool ClientApp::CollisionCheck (gameplay::Player playerA, gameplay::Player playerB) {
+//    if (playerA.position_.x_<playerB.position_.x_ + 20 && playerA.position_.x_ + 20 >playerB.position_.x_ && playerA.position_.y_<playerB.position_.y_ + 20 && playerA.position_.y_ + 20>playerB.position_.y_)
+//        return true;
+//    else
+//        return false;
+//}
 
 void ClientApp::on_draw () {
     if (networkData.detailsOverlay) {
-        char charArray[2048] = {};
-        strcat_s (charArray, std::to_string (networkData.packetLoss).c_str ());
-        renderer_.render_text_va ({ 2,12 }, Color::Red, 1, "Packet Loss: %f",networkData.packetLoss);
+        renderer_.render_text_va ({ 2,12 }, player_.playerColor, 2, "Packet Loss: %f", networkData.packetLoss);
+        renderer_.render_text_va ({ 2,24 }, player_.playerColor, 2, "Packet Sent: %d", networkData.packetsSent);
+        renderer_.render_text_va ({ 2,36 }, player_.playerColor, 2, "Packet Delivered: %d", networkData.packetsDelivered);
+        renderer_.render_text_va ({ 2,48 }, player_.playerColor, 2, "Packet Lost: %d", networkData.packetsLost);
+        renderer_.render_text_va ({ 2,60 }, player_.playerColor, 2, "Packet Recieved: %d", networkData.packetsReceived);
+        renderer_.render_text_va ({ 2,72 }, player_.playerColor, 2, "Round Trip Time %f", networkData.RTT.as_seconds ());
     }
     switch (gameState) {
         case gameplay::GameState::Searching: {
@@ -225,7 +239,8 @@ void ClientApp::on_draw () {
         case gameplay::GameState::Gameplay: {
             renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
             renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
-            renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
+            if(player_.alive)
+                renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
             for (int i = 0; i < 3; i++) {
                 if (entity_[i].alive) {
                     renderer_.render_rectangle_fill ({ int32 (entity_[i].position_.x_), int32 (entity_[i].position_.y_), 20, 20 }, entity_[i].entityColor);
@@ -239,7 +254,11 @@ void ClientApp::on_draw () {
             break;
         }
         case charlie::gameplay::GameState::Exit: {
-            renderer_.render_text ({ 2, 12 }, Color::White, 1, "You lost");
+            if(!player_.alive)
+                renderer_.render_text ({ 2, 12 }, Color::White, 1, "You lost");
+            else {
+                renderer_.render_text ({ 2, 12 }, Color::White, 1, "You won");
+            }
             break;
         }
     }
@@ -267,6 +286,8 @@ void ClientApp::on_acknowledge (network::Connection* connection, const uint16 se
 
 void ClientApp::on_receive (network::Connection* connection, network::NetworkStreamReader& reader) {
     networkData.packetsReceived++;
+    networkData.LastRecieved = connection->last_received_time_;
+    networkData.RTT = connection->round_trip_time ();
     ///bytes received is reader.length()
     while (reader.position () < reader.length ()) {
         switch (reader.peek ()) {
@@ -338,14 +359,14 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 
                 for (int i = 0; i < 3; i++) {
                     if (entity_[i].entityID == message.entityID) {
-                        if (message.entityAlive) {
+                        entity_[i].alive = message.entityAlive;
+                        if (entity_[i].alive) {
                             gameplay::PositionHistory temp;
                             temp.position = message.position_;
                             temp.tick = recievedServerTick;
                             entity_[i].positionHistory.push_back (temp);
                             entity_[i].position_ = message.position_;
                             entity_[i].entityColor = playerColors[entity_[i].entityID];
-                            entity_[i].alive = message.entityAlive;
                         }
                         break;
                     }
@@ -359,11 +380,11 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                     assert (!"could not read message!");
                 }
                 if (message.playerID == player_.playerID) {
+                    player_.alive = message.playerAlive;
                     if (message.playerAlive) {
                         player_.position_ = message.position_;
                         Color tempColor;
                         player_.playerColor = playerColors[player_.playerID];
-                        player_.alive = message.playerAlive;
                     }
                 }
                 break;
@@ -384,6 +405,7 @@ void ClientApp::on_send (network::Connection* connection, const uint16 sequence,
         assert (!"could not write network command!");
     }
     networkData.packetsSent++;
+    networkData.lastSent = connection->last_sent_time_;
 }
 
 bool ClientApp::ServerDiscovery () {

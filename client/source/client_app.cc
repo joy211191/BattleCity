@@ -19,6 +19,7 @@ ClientApp::ClientApp()
    , tickrate_(1.0 /  60.0)
    , input_bits_(0)
 {
+    winnerID = 4;
     globalTick = 0;
     recievedServerTick = 0;
     gameState = gameplay::GameState::Searching;
@@ -138,7 +139,6 @@ bool ClientApp::on_tick (const Time& dt) {
                         gameState = gameplay::GameState::Exit;
                     }
                 }
-
                 input_bits_ = 0;
                 if (player_.alive) {
                     if (player_.position_.y_ > 0) {
@@ -165,7 +165,6 @@ bool ClientApp::on_tick (const Time& dt) {
                         input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
                     }
 
-                    //const bool player_shoot = input_bits_ & (1 << int32 (gameplay::Action::Shoot));
                     const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
                     const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
                     const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
@@ -192,10 +191,10 @@ bool ClientApp::on_tick (const Time& dt) {
                     temp.inputBits = input_bits_;
                     temp.tick = globalTick;
                     temp.calculatedPosition = player_.position_;
-                    inputLibrary.push_back (temp);
-                    //add input prediction
-                    if (inputLibrary[0].tick - tickrate_.as_ticks () > 20000) {
-                        inputLibrary.erase (inputLibrary.begin ());
+                    if (inputLibrary.size () > 0) {
+                        if (inputLibrary[0].tick - tickrate_.as_ticks () > 20000) {
+                            inputLibrary.erase (inputLibrary.begin ());
+                        }
                     }
                 }
                 else {
@@ -212,21 +211,16 @@ bool ClientApp::on_tick (const Time& dt) {
     return true;
 }
 
-//bool ClientApp::CollisionCheck (gameplay::Player playerA, gameplay::Player playerB) {
-//    if (playerA.position_.x_<playerB.position_.x_ + 20 && playerA.position_.x_ + 20 >playerB.position_.x_ && playerA.position_.y_<playerB.position_.y_ + 20 && playerA.position_.y_ + 20>playerB.position_.y_)
-//        return true;
-//    else
-//        return false;
-//}
-
 void ClientApp::on_draw () {
+    renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
     if (networkData.detailsOverlay) {
-        renderer_.render_text_va ({ 2,12 }, player_.playerColor, 2, "Packet Loss: %f", networkData.packetLoss);
-        renderer_.render_text_va ({ 2,24 }, player_.playerColor, 2, "Packet Sent: %d", networkData.packetsSent);
-        renderer_.render_text_va ({ 2,36 }, player_.playerColor, 2, "Packet Delivered: %d", networkData.packetsDelivered);
-        renderer_.render_text_va ({ 2,48 }, player_.playerColor, 2, "Packet Lost: %d", networkData.packetsLost);
-        renderer_.render_text_va ({ 2,60 }, player_.playerColor, 2, "Packet Recieved: %d", networkData.packetsReceived);
-        renderer_.render_text_va ({ 2,72 }, player_.playerColor, 2, "Round Trip Time %f", networkData.RTT.as_seconds ());
+        renderer_.render_text_va ({ 2,6 }, player_.playerColor, 1, "Packet Loss: %f", networkData.packetLoss);
+        renderer_.render_text_va ({ 2,12 }, player_.playerColor, 1, "Packets Sent: %d", networkData.packetsSent);
+        renderer_.render_text_va ({ 2,18 }, player_.playerColor, 1, "Packets Delivered: %d", networkData.packetsDelivered);
+        renderer_.render_text_va ({ 2,24 }, player_.playerColor, 1, "Packets Lost: %d", networkData.packetsLost);
+        renderer_.render_text_va ({ 2,30 }, player_.playerColor, 1, "Packets Recieved: %d", networkData.packetsReceived);
+        renderer_.render_text_va ({ 2,36 }, player_.playerColor, 1, "Round Trip Time: %f", networkData.RTT.as_seconds ());
+        renderer_.render_text_va ({ 2,42 }, player_.playerColor, 1, "Bytes recieved: %d", networkData.dataSize);
     }
     switch (gameState) {
         case gameplay::GameState::Searching: {
@@ -237,8 +231,6 @@ void ClientApp::on_draw () {
             break;
         }
         case gameplay::GameState::Gameplay: {
-            renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
-            renderer_.render_text ({ 2, 2 }, Color::White, 1, "CLIENT");
             if(player_.alive)
                 renderer_.render_rectangle_fill ({ int32 (player_.position_.x_), int32 (player_.position_.y_), 20, 20 }, player_.playerColor);
             for (int i = 0; i < 3; i++) {
@@ -251,13 +243,17 @@ void ClientApp::on_draw () {
                     renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
                 }
             }
+            renderer_.render_text_va ({ window_.width_/2,18 }, playerColors[winnerID], 1, "YOU");
             break;
         }
         case charlie::gameplay::GameState::Exit: {
-            if(!player_.alive)
-                renderer_.render_text ({ 2, 12 }, Color::White, 1, "You lost");
+            if (!player_.alive) {
+                renderer_.render_text ({ 2, 12 }, playerColors[player_.playerID], 1, "You lost");
+                if(winnerID<4)
+                    renderer_.render_text_va ({ 2,18 }, playerColors[winnerID], 1, "Winner");
+            }
             else {
-                renderer_.render_text ({ 2, 12 }, Color::White, 1, "You won");
+                renderer_.render_text ({ 2, 12 }, playerColors[player_.playerID], 1, "You won");
             }
             break;
         }
@@ -288,7 +284,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
     networkData.packetsReceived++;
     networkData.LastRecieved = connection->last_received_time_;
     networkData.RTT = connection->round_trip_time ();
-    ///bytes received is reader.length()
+    networkData.dataSize = reader.length ();
     while (reader.position () < reader.length ()) {
         switch (reader.peek ()) {
             case network::NETWORK_MESSAGE_SHOOT: {
@@ -344,6 +340,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                             break;
                         }
                     }
+                    player_.playerColor = playerColors[player_.playerID];
+                    player_.position_ = playerStartPositions[player_.playerID];
                     idApplied = true;
                 }
                 const Time current = Time (message.server_time_);
@@ -389,6 +387,15 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 }
                 break;
             }
+
+            case network::NETWORK_MESSAGE_WINNER: {
+                network::NetoworkMessageWinner message;
+                if (!message.read (reader)) {
+                    assert (!"could not read message!");
+                }
+                winnerID = message.winnerID;
+            }break;
+
             default:
             {
                 assert (!"unknown message type received from server!");

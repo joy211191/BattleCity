@@ -17,7 +17,8 @@ namespace charlie {
          NETWORK_MESSAGE_INPUT_COMMAND,
          NETWORK_MESSAGE_PLAYER_STATE,
          NETWORK_MESSAGE_COUNT,
-         NETWORK_MESSAGE_SHOOT
+         NETWORK_MESSAGE_SHOOT,
+         NETWORK_MESSAGE_WINNER
 
       };
 
@@ -148,6 +149,24 @@ namespace charlie {
          uint8 type_;
          Vector2 position_;
          int32 playerID;
+      };
+
+      struct NetoworkMessageWinner {
+          NetoworkMessageWinner ();
+          explicit NetoworkMessageWinner (const int32 id);
+
+          bool read (NetworkStreamReader& reader);
+          bool write (NetworkStreamWriter& writer);
+
+          template <typename Stream>
+          bool serialize (Stream& stream) {
+              bool result = true;
+              result &= stream.serialize (type_);
+              result &= stream.serialize (winnerID);
+              return result;
+          }
+          uint8 type_;
+          int32 winnerID;
       };
    } // !network
 } // !charlie

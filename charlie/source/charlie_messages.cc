@@ -11,6 +11,21 @@ namespace charlie {
       //    :playerID(id)
       //{
       //}
+       NetoworkMessageWinner::NetoworkMessageWinner () {}
+
+       NetoworkMessageWinner::NetoworkMessageWinner (const int32 id)
+           :type_ (NETWORK_MESSAGE_WINNER),
+           winnerID (id) {
+       }
+
+       bool NetoworkMessageWinner::read (NetworkStreamReader& reader) {
+           return serialize (reader);
+       }
+
+       bool NetoworkMessageWinner::write (NetworkStreamWriter& writer) {
+           return serialize (writer);
+       }
+
 
        NetworkMessageShoot::NetworkMessageShoot(){}
 

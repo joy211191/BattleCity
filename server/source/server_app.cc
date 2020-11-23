@@ -60,6 +60,11 @@ bool ServerApp::on_tick (const Time& dt) {
 
         switch (gameState) {
         case gameplay::GameState::Searching: {
+            if (players_.size () > 0) {
+                for (int i = 0; i < players_.size ();i++) {
+                    players_[i].position_ = playerStartPositions[i];
+                }
+            }
             if (keyboard.pressed (Keyboard::Key::Space)||players_.size()==4) {
                 gameState = gameplay::GameState::Setup;
             }
@@ -274,7 +279,7 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
 void ServerApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
     auto id = clients_.find_client ((uint64)connection);
     {
-        for (int i = 0; i < players_.size(); i++) {
+        for (int i = 0; i < players_.size (); i++) {
             network::NetworkMessageServerTick message (Time::now ().as_ticks (), tick_, id);
             if (!message.write (writer)) {
                 assert (!"failed to write message!");
@@ -283,7 +288,7 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
     }
     for (int i = 0; i < 4; i++) {
         if (bullets[i].active) {
-            network::NetworkMessageShoot message (bullets[i].active, tick_, i, bullets[i].position_,bullets[i].direction);
+            network::NetworkMessageShoot message (bullets[i].active, tick_, i, bullets[i].position_, bullets[i].direction);
             if (!message.write (writer)) {
                 assert (!"failed to write message!");
             }
@@ -298,17 +303,23 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
                     temp.sequenceNumber = sequence;
                     players_[i].eventQueue.push_back (temp);
                 }
-                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID,players_[i].alive);
+                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID, players_[i].alive);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }
             }
             else {
-                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID,players_[i].alive);
+                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID, players_[i].alive);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }
             }
+        }
+    }
+    if (gameState == gameplay::GameState::Exit) {
+        network::NetoworkMessageWinner message (winnerID);
+        if (!message.write (writer)) {
+            assert (!"failed to write message!");
         }
     }
 }

@@ -64,6 +64,7 @@ struct ClientApp final : Application, network::IConnectionListener {
 	   float packetLoss;
 	   bool detailsOverlay;
 	   charlie::DynamicArray<int> sequenceStack;
+	   int32 dataSize;
    };
 
    DataStruct networkData;
@@ -87,6 +88,7 @@ struct ClientApp final : Application, network::IConnectionListener {
    bool serverFound=false;
    int8 iterator;
    bool idApplied;
+   int winnerID;
 
    bool CollisionCheck (gameplay::Player playerA, gameplay::Player playerB);
 };

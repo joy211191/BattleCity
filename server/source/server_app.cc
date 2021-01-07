@@ -128,6 +128,7 @@ bool ServerApp::on_tick (const Time& dt) {
                         players_[(*in).playerID].position_ += direction * speed * tickrate_.as_seconds();
                     }
                 }
+                in++;
             }
             for (auto& bl : bullets) {
                 Bullet (bl.bulletID, bl.direction);

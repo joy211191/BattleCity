@@ -221,16 +221,14 @@ bool ClientApp::on_tick (const Time& dt) {
                     if (keyboard_.down(Keyboard::Key::Space)) {
                         input_bits_ |= (1 << int32(gameplay::Action::Shoot));
                     }
-                    printf("%d", input_bits_);
+                    //printf("%d", input_bits_);
                     direction = GetInputDirection(input_bits_);
 
-                    if (input_bits_ > 0) {
                         Inputinator tempInput;
                         tempInput.inputBits = input_bits_;
                         tempInput.tick = clientTick;
                         tempInput.calculatedPosition = player_.position_ + direction;
                         inputLibrary.push_back(tempInput);
-                    }
                     if (direction.length() > 0.0f) {
                         direction.normalize();
                         player_.position_ = player_.position_ + direction;
@@ -546,7 +544,7 @@ void ClientApp::on_send (network::Connection* connection, const uint16 sequence,
 void ClientApp::CheckPlayerPosition(uint32 serverTick, Vector2 serverPosition)
 {
     auto in = inputLibrary.begin();
-
+    ++in;
     while (in != inputLibrary.end()) {
         if ( serverTick == (*in).tick) {
             if (Vector2::distance(serverPosition, (*in).calculatedPosition) > 5) {

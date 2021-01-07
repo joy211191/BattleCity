@@ -93,5 +93,14 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     bool CollisionCheck (Vector2 positionA, Vector2 positionB);
     void Bullet (int id, Vector2 direction);
     int winnerID;
+
+    class ServerInputinator {
+    public:
+        int32 playerID;
+        uint8 inputBits;
+        uint32 tick;
+    };
+
+    charlie::DynamicArray<ServerInputinator> inputLibrary;
 };
-#endif // !SERVER_APP_HPP_INCLUDED
+#endif

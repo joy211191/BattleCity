@@ -20,6 +20,7 @@ namespace charlie {
           Color entityColor;
           uint32 lastTick;
           charlie::DynamicArray<PositionHistory> positionHistory;
+          Vector2 recievedPosition;
       };
 
        struct Bullet {
@@ -29,6 +30,7 @@ namespace charlie {
            uint32 lastTick;
            charlie::DynamicArray<PositionHistory> positionHistory;
            Vector2 direction;
+           Vector2 recievedPosition;
        };
 
       enum class EventStates {

@@ -102,11 +102,32 @@ namespace charlie {
       {
       }
 
-      NetworkMessageInputCommand::NetworkMessageInputCommand (uint8 bits, int32 playerID,  int32 sequence)
+      NetworkMessageGameState::NetworkMessageGameState()
+          :type(NETWORK_MESSAGE_GAMESTATE),bits(0)
+      {
+
+      }
+
+      NetworkMessageGameState::NetworkMessageGameState(uint8 bits_)
+          : type(NETWORK_MESSAGE_GAMESTATE), bits(bits_)
+      {
+      }
+
+      bool NetworkMessageGameState::read(NetworkStreamReader& reader)
+      {
+          return serialize(reader);
+      }
+
+      bool NetworkMessageGameState::write(NetworkStreamWriter& writer)
+      {
+          return serialize(writer);
+      }
+
+      NetworkMessageInputCommand::NetworkMessageInputCommand (uint8 bits, int32 playerID,  int32 tick)
           : type_ (NETWORK_MESSAGE_INPUT_COMMAND)
           , bits_ (bits),
           id (playerID),
-          sequenceNumber (sequence)
+          sequenceNumber (tick)
       {
       }
 
@@ -143,5 +164,7 @@ namespace charlie {
       {
          return serialize(writer);
       }
-   } // !network
+
+      
+} // !network
 } // !messages

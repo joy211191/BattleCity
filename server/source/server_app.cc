@@ -6,12 +6,12 @@
 #include <charlie.hpp>
 using namespace std;
 
-ServerApp::ServerApp () : tickrate_ (1.0 / 60.0), tick_ (0) {
+ServerApp::ServerApp () : tickrate_ (1.0 / 20.0), tick_ (0) {
 
     for (int i = 0; i < sizeof (player_input_bits_); i++) {
         player_input_bits_[i] = 0;
     }
-
+    winnerID = 4;
     gameState = gameplay::GameState::Searching;
 
     playerColors[0] = Color::Red;
@@ -32,7 +32,6 @@ bool ServerApp::on_init () {
     if (!network_.initialize (network::IPAddress (network::IPAddress::ANY_HOST, 54345))) {
         return false;
     }
-
     network_.add_service_listener (this);
 
     entity_.position_ = { 300.0f, 180.0f };
@@ -65,7 +64,7 @@ bool ServerApp::on_tick (const Time& dt) {
                     players_[i].position_ = playerStartPositions[i];
                 }
             }
-            if (keyboard.pressed (Keyboard::Key::Space)||players_.size()==4) {
+            if (players_.size()==4) {
                 gameState = gameplay::GameState::Setup;
             }
             break;
@@ -82,14 +81,15 @@ bool ServerApp::on_tick (const Time& dt) {
             break;
         }
         case gameplay::GameState::Gameplay: {
-            for (int i = 0; i < players_.size (); i++) {
-                if (players_[i].alive) {
+            for (auto& in : inputLibrary) {
+                if (players_[in.playerID].alive) {
                     const float speed = 100.0;
-                    const bool player_move_up = player_input_bits_[i] & (1 << int32 (gameplay::Action::Up));
-                    const bool player_move_down = player_input_bits_[i] & (1 << int32 (gameplay::Action::Down));
-                    const bool player_move_left = player_input_bits_[i] & (1 << int32 (gameplay::Action::Left));
-                    const bool player_move_right = player_input_bits_[i] & (1 << int32 (gameplay::Action::Right));
-                    const bool player_shoot = player_input_bits_[i] & (1 << int32 (gameplay::Action::Shoot));
+                    const bool player_move_up = player_input_bits_[in.playerID] && 1;
+                    const bool player_move_down = player_input_bits_[in.playerID] && 2;
+                    const bool player_move_left = player_input_bits_[in.playerID] && 4;
+                    const bool player_move_right = player_input_bits_[in.playerID] && 8;
+                    const bool player_shoot = player_input_bits_[in.playerID] && 16;
+
 
                     Vector2 direction;
                     if (player_move_up) {
@@ -104,26 +104,27 @@ bool ServerApp::on_tick (const Time& dt) {
                     if (player_move_right) {
                         direction.x_ += 1.0f;
                     }
-                    if (player_shoot && direction.length () > 0) {
+
+                   if ( direction.length() > 0) {
                         charlie::gameplay::Event tempEvent;
-                        tempEvent.playerID = players_[i].playerID;
-                        tempEvent.position = players_[i].position_;
+                        tempEvent.playerID = players_[in.playerID].playerID;
+                        tempEvent.position = players_[in.playerID].position_;
                         tempEvent.state = charlie::gameplay::EventStates::Shooting;
-                        eventQueue.push_back (tempEvent);
-                        if (!bullets[i].active) {
-                            bullets[i].bulletID = i;
-                            bullets[i].active = true;
+                        eventQueue.push_back(tempEvent);
+                        if (!bullets[in.playerID].active) {
+                            bullets[in.playerID].bulletID = in.playerID;
+                            bullets[in.playerID].active = true;
                             Vector2 offsetPosition;
                             offsetPosition.x_ = 10;
                             offsetPosition.y_ = 10;
-                            bullets[i].position_ = players_[i].position_ + offsetPosition;
-                            bullets[i].direction = direction;
-                            bullets[i].direction.normalize ();
+                            bullets[in.playerID].position_ = players_[in.playerID].position_ + offsetPosition;
+                            bullets[in.playerID].direction = direction;
+                            bullets[in.playerID].direction.normalize();
                         }
                     }
-                    if (direction.length () > 0.0f) {
-                        direction.normalize ();
-                        players_[i].position_ += direction * speed * tickrate_.as_seconds ();
+                    if (direction.length() > 0.0f) {
+                        direction.normalize();
+                        players_[in.playerID].position_ += direction * speed * tickrate_.as_seconds();
                     }
                 }
             }
@@ -157,7 +158,7 @@ bool ServerApp::on_tick (const Time& dt) {
 }
 
 bool ServerApp::CollisionCheck (Vector2 positionA, Vector2 positionB) {
-    if (positionA.x_<positionB.x_ + 10 && positionA.x_ + 10 >positionB.x_ && positionA.y_<positionB.y_ + 10 && positionA.y_ + 10>positionB.y_)
+    if (positionA.x_<positionB.x_ + 20 && positionA.x_ + 20 >positionB.x_ && positionA.y_<positionB.y_ + 20 && positionA.y_ + 20>positionB.y_)
         return true;
     else
         return false;
@@ -214,7 +215,6 @@ void ServerApp::on_draw () {
 void ServerApp::on_timeout (network::Connection* connection) {
     connection->set_listener (nullptr);
     auto id = clients_.find_client ((uint64)connection);
-    // ...
     clients_.remove_client ((uint64)connection);
     printf ("Timeout");
 }
@@ -235,7 +235,6 @@ void ServerApp::on_connect (network::Connection* connection) {
 void ServerApp::on_disconnect (network::Connection* connection) {
     connection->set_listener (nullptr);
     auto id = clients_.find_client ((uint64)connection);
-    // ...
     clients_.remove_client ((uint64)connection);
     printf ("Disconnected");
 }
@@ -267,12 +266,17 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
         if (!command.read (reader)) {
             assert (!"could not read command!");
         }
-        for (int i = 0; players_.size (); i++) {
-            if (players_[i].playerID == id) {
-                player_input_bits_[i] = command.bits_;
-                break;
-            }
-        }
+        ServerInputinator temp;
+        temp.playerID = command.id;
+        temp.tick = command.tick_;
+        temp.inputBits = command.bits_;
+        inputLibrary.push_back(temp);
+        //for (int i = 0; players_.size (); i++) {
+        //    if (players_[i].playerID == id) {
+        //        player_input_bits_[i] = command.bits_;
+        //        break;
+        //    }
+        //}
     }
 }
 
@@ -286,6 +290,35 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
             }
         }
     }
+    uint8 stateBits = 0;
+    switch (gameState)
+    {
+    case gameplay::GameState::Searching: {
+        stateBits = 0;
+        break;
+    }
+    case gameplay::GameState::Setup: {
+        stateBits = 1;
+        break;
+    }
+    case gameplay::GameState::Gameplay: {
+        stateBits = 2;
+        break;
+    }
+    case gameplay::GameState::Exit: {
+        stateBits = 3;
+        break;
+    }
+    default:
+        break;
+    }
+    for (int i = 0; i < 4; i++) {
+        network::NetworkMessageGameState gameStateMessage(stateBits);
+        if (!gameStateMessage.write(writer)) {
+            assert(!"failed to write message!");
+        }
+    }
+
     for (int i = 0; i < 4; i++) {
         if (bullets[i].active) {
             network::NetworkMessageShoot message (bullets[i].active, tick_, i, bullets[i].position_, bullets[i].direction);
@@ -295,7 +328,7 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
         }
     }
     {
-        for (int i = 0; i < players_.size (); i++) {
+        for (uint8 i = 0; i < players_.size (); i++) {
             if (id == players_[i].playerID) {
                 if (!eventQueue.empty ()) {
                     charlie::gameplay::ReliableMessage temp;

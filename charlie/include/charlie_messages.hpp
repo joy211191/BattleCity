@@ -16,9 +16,10 @@ namespace charlie {
          NETWORK_MESSAGE_ENTITY_STATE,
          NETWORK_MESSAGE_INPUT_COMMAND,
          NETWORK_MESSAGE_PLAYER_STATE,
-         NETWORK_MESSAGE_COUNT,
          NETWORK_MESSAGE_SHOOT,
-         NETWORK_MESSAGE_WINNER
+         NETWORK_MESSAGE_WINNER,
+         NETWORK_MESSAGE_GAMESTATE,
+         NETWORK_MESSAGE_COUNT
 
       };
 
@@ -77,6 +78,26 @@ namespace charlie {
          int32 playerID;
       };
 
+      struct NetworkMessageGameState {
+          NetworkMessageGameState();
+          explicit NetworkMessageGameState(uint8 bits);
+
+          bool read(NetworkStreamReader& reader);
+          bool write(NetworkStreamWriter& writer);
+
+          template <typename Stream>
+          bool serialize(Stream& stream)
+          {
+              bool result = true;
+              result &= stream.serialize(type);
+              result &= stream.serialize(bits);
+              return result;
+          }
+          uint8 type;
+          uint8 bits;
+      };
+
+
       struct NetworkMessageEntityState {
          NetworkMessageEntityState();
          explicit NetworkMessageEntityState(const Vector2 &position,const int32 &entID, const uint8& alive);
@@ -104,7 +125,7 @@ namespace charlie {
 
       struct NetworkMessageInputCommand {
          NetworkMessageInputCommand();
-         explicit NetworkMessageInputCommand(uint8 bits,int32 playerID,int32 sequence);
+         explicit NetworkMessageInputCommand(uint8 bits,int32 playerID,int32 tick);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -117,9 +138,11 @@ namespace charlie {
             result &= stream.serialize(bits_);
             result &= stream.serialize (id);
             result &= stream.serialize (sequenceNumber);
+            result &= stream.serialize(tick_);
             return result;
          }
 
+         int32 tick_;
          uint8 type_;
          uint8 bits_;
          int32 id;

@@ -19,8 +19,9 @@ ClientApp::ClientApp()
    , tickrate_(1.0 /  60.0)
    , input_bits_(0)
 {
+    lastSentTick = 0;
     winnerID = 4;
-    globalTick = 0;
+    clientTick = 0;
     recievedServerTick = 0;
     gameState = gameplay::GameState::Searching;
     playerColors[0] = Color::Red;
@@ -63,6 +64,42 @@ void ClientApp::on_exit () {
     connection_.disconnect ();
 }
 
+void ClientApp::EntityInterpolator()
+{
+    for (auto& en : entity_) {
+        if (en.entityID < 4 && en.positionHistory.size() > 4) {
+            if (recievedServerTick - en.positionHistory[0].tick > 20000) {
+                en.positionHistory.erase(en.positionHistory.begin());
+            }
+            for (int i = 0; i < en.positionHistory.size(); i++) {
+                if (recievedServerTick - en.positionHistory[i].tick < 20000) {
+                    float tempDist = Vector2::distance( en.position_, en.recievedPosition);
+                    en.position_ = Vector2::lerp(en.position_, en.recievedPosition, tempDist * tickrate_.as_seconds());
+                    en.lastTick = en.positionHistory[i].tick;
+                }
+            }
+        }
+    }
+}
+
+void ClientApp::BulletInpterpolator()
+{
+    for (auto& bl : bullets) {
+        if (bl.bulletID < 4 && bl.positionHistory.size() > 4) {
+            if (recievedServerTick - bl.positionHistory[0].tick > 20000) {
+                bl.positionHistory.erase(bl.positionHistory.begin());
+            }
+            for (int i = 0; i < bl.positionHistory.size(); i++) {
+                if (recievedServerTick - bl.positionHistory[i].tick < 20000) {
+                    float tempDist = Vector2::distance(bl.position_, bl.recievedPosition);
+                    bl.position_ = Vector2::lerp(bl.position_, bl.recievedPosition, tempDist * tickrate_.as_seconds());
+                    bl.lastTick = bl.positionHistory[i].tick;
+                }
+            }
+        }
+    }
+}
+
 bool ClientApp::on_tick (const Time& dt) {
     if (keyboard_.pressed (Keyboard::Key::Escape)) {
         on_exit ();
@@ -71,6 +108,30 @@ bool ClientApp::on_tick (const Time& dt) {
     if (keyboard_.pressed (Keyboard::Key::Tab)) {
         networkData.detailsOverlay = !networkData.detailsOverlay;
     }
+    int temp = 0;
+    switch (gameState)
+    {
+    case gameplay::GameState::Searching: {
+        temp = 0;
+        break;
+    }
+    case gameplay::GameState::Setup: {
+        temp = 1;
+        break;
+    }
+    case gameplay::GameState::Gameplay: {
+        temp = 2;
+        break;
+    }
+    case gameplay::GameState::Exit: {
+        temp = 3;
+        break;
+    }
+    default:
+        break;
+    }
+
+    //printf("%d" ,temp);
     switch (gameState) {
         case gameplay::GameState::Searching: {
             if (!serverFound)
@@ -80,54 +141,50 @@ bool ClientApp::on_tick (const Time& dt) {
                     connection_.connect (serverIP);
                 }
             }
-            if (connection_.is_connected ()) {
-                gameState = gameplay::GameState::Gameplay;
+            if (connection_.is_connected()) {
+                gameState = gameplay::GameState::Setup;
+            }
+            break;
+        }
+
+        case gameplay::GameState::Setup: {
+            input_bits_ = 0;
+            if (keyboard_.down(Keyboard::Key::W)) {
+                input_bits_ |= (1 << int32(gameplay::Action::Up));
+            }
+
+            if (keyboard_.down(Keyboard::Key::S)) {
+                input_bits_ |= (1 << int32(gameplay::Action::Down));
+            }
+
+            if (keyboard_.down(Keyboard::Key::A)) {
+                input_bits_ |= (1 << int32(gameplay::Action::Left));
+            }
+
+            if (keyboard_.down(Keyboard::Key::D)) {
+                input_bits_ |= (1 << int32(gameplay::Action::Right));
+            }
+            if (keyboard_.down(Keyboard::Key::Space)) {
+                input_bits_ |= (1 << int32(gameplay::Action::Shoot));
+            }
+            printf("%d", input_bits_);
+
+            if (player_.playerID < 4) {
+                player_.position_ = playerStartPositions[player_.playerID];
+                player_.playerColor = playerColors[player_.playerID];
             }
             break;
         }
 
         case gameplay::GameState::Gameplay: {
+            if (connection_.state_ != network::Connection::State::Connected)
+                gameState = gameplay::GameState::Searching;
             accumulator_ += dt;
             while (accumulator_ >= tickrate_) {
-                globalTick = recievedServerTick;
-                accumulator_ -= tickrate_;
-                if (interpolatorAccumulator.as_seconds () > tickrate_.as_seconds ())
-                    interpolatorAccumulator = Time ();
-                else
-                    interpolatorAccumulator += tickrate_;
-                for (auto& en : entity_) {
-                    if (en.entityID < 4 && en.positionHistory.size () > 4) {
-                        if (recievedServerTick - en.positionHistory[0].tick > 20000) {
-                            en.positionHistory.erase (en.positionHistory.begin ());
-                        }
-                        for (int i = 0; i < en.positionHistory.size (); i++) {
-                            if (recievedServerTick - en.positionHistory[i].tick < 20000) {
-                                Vector2 direction = en.positionHistory[i].position - en.position_;
-                                const float interpolator = (en.lastTick - en.positionHistory[i].tick) * tickrate_.as_seconds ();
-                                const float t = interpolator/ accumulator_.as_seconds ();
-                                en.position_ = Vector2::lerp (en.position_, en.positionHistory[i].position, t);
-                                en.lastTick = en.positionHistory[i].tick;
-                            }
-                        }
-                    }
-                }
-
-                for (auto& bl : bullets) {
-                    if (bl.bulletID < 4 && bl.positionHistory.size () > 4) {
-                        if (recievedServerTick - bl.positionHistory[0].tick > 20000) {
-                            bl.positionHistory.erase (bl.positionHistory.begin ());
-                        }
-                        for (int i = 0; i < bl.positionHistory.size (); i++) {
-                            if (recievedServerTick - bl.positionHistory[i].tick < 20000) {
-                                Vector2 direction = bl.positionHistory[i].position - bl.position_;
-                                const float interpolator = (bl.lastTick - bl.positionHistory[i].tick) * tickrate_.as_seconds ();
-                                const float t =interpolator/ accumulator_.as_seconds ();
-                                bl.position_ = Vector2::lerp (bl.position_, bl.positionHistory[i].position, t);
-                                bl.lastTick = bl.positionHistory[i].tick;
-                            }
-                        }
-                    }
-                }
+                clientTick = recievedServerTick;
+                accumulator_ -= tickrate_;      
+                EntityInterpolator();
+                BulletInpterpolator();
                 int counter = 0;
                 if (player_.alive) {
                     for (auto& en : entity_) {
@@ -142,60 +199,54 @@ bool ClientApp::on_tick (const Time& dt) {
                 input_bits_ = 0;
                 if (player_.alive) {
                     if (player_.position_.y_ > 0) {
-                        if (keyboard_.down (Keyboard::Key::W)) {
-                            input_bits_ |= (1 << int32 (gameplay::Action::Up));
+                        if (keyboard_.down(Keyboard::Key::W)) {
+                            input_bits_ |= (1 << int32(gameplay::Action::Up));
                         }
                     }
                     if (player_.position_.y_ < window_.height_) {
-                        if (keyboard_.down (Keyboard::Key::S)) {
-                            input_bits_ |= (1 << int32 (gameplay::Action::Down));
+                        if (keyboard_.down(Keyboard::Key::S)) {
+                            input_bits_ |= (1 << int32(gameplay::Action::Down));
                         }
                     }
                     if (player_.position_.x_ > 0) {
-                        if (keyboard_.down (Keyboard::Key::A)) {
-                            input_bits_ |= (1 << int32 (gameplay::Action::Left));
+                        if (keyboard_.down(Keyboard::Key::A)) {
+                            input_bits_ |= (1 << int32(gameplay::Action::Left));
                         }
                     }
                     if (player_.position_.x_ < window_.width_) {
-                        if (keyboard_.down (Keyboard::Key::D)) {
-                            input_bits_ |= (1 << int32 (gameplay::Action::Right));
+                        if (keyboard_.down(Keyboard::Key::D)) {
+                            input_bits_ |= (1 << int32(gameplay::Action::Right));
                         }
                     }
-                    if (keyboard_.down (Keyboard::Key::Space)) {
-                        input_bits_ |= (1 << int32 (gameplay::Action::Shoot));
+                    if (keyboard_.down(Keyboard::Key::Space)) {
+                        input_bits_ |= (1 << int32(gameplay::Action::Shoot));
+                    }
+                    printf("%d", input_bits_);
+                    direction = GetInputDirection(input_bits_);
+
+                    if (input_bits_ > 0) {
+                        Inputinator tempInput;
+                        tempInput.inputBits = input_bits_;
+                        tempInput.tick = clientTick;
+                        tempInput.calculatedPosition = player_.position_ + direction;
+                        inputLibrary.push_back(tempInput);
+                    }
+                    if (direction.length() > 0.0f) {
+                        direction.normalize();
+                        player_.position_ = player_.position_ + direction;
                     }
 
-                    const bool player_move_up = input_bits_ & (1 << int32 (gameplay::Action::Up));
-                    const bool player_move_down = input_bits_ & (1 << int32 (gameplay::Action::Down));
-                    const bool player_move_left = input_bits_ & (1 << int32 (gameplay::Action::Left));
-                    const bool player_move_right = input_bits_ & (1 << int32 (gameplay::Action::Right));
+                    //if (inputLibrary[0].tick - tickrate_.as_seconds() > 20000) {
+                    //    inputLibrary.erase(inputLibrary.begin());
+                    //}
 
-                    Vector2 direction;
-                    if (player_move_up) {
-                        direction.y_ -= 1.0f;
+                    /*if (Vector2::distance(recievedPosition, temp.calculatedPosition) < 5) {
+                        float tempDist = Vector2::distance (player_.position_, temp.calculatedPosition);
+                        player_.position_ = Vector2::lerp(player_.position_, temp.calculatedPosition, tempDist * tickrate_.as_seconds());
                     }
-                    if (player_move_down) {
-                        direction.y_ += 1.0f;
-                    }
-                    if (player_move_left) {
-                        direction.x_ -= 1.0f;
-                    }
-                    if (player_move_right) {
-                        direction.x_ += 1.0f;
-                    }
-                    if (direction.length () > 0.0f) {
-                        direction.normalize ();
-                        player_.position_ = Vector2::lerp (player_.position_, player_.position_ + direction * speed, tickrate_.as_seconds ());
-                    }
-                    InputPrediction temp;
-                    temp.inputBits = input_bits_;
-                    temp.tick = globalTick;
-                    temp.calculatedPosition = player_.position_;
-                    if (inputLibrary.size () > 0) {
-                        if (inputLibrary[0].tick - tickrate_.as_ticks () > 20000) {
-                            inputLibrary.erase (inputLibrary.begin ());
-                        }
-                    }
+                    else {
+                        player_.position_ = recievedPosition;
+                    }*/
                 }
                 else {
                     gameState = gameplay::GameState::Exit;
@@ -211,8 +262,33 @@ bool ClientApp::on_tick (const Time& dt) {
     return true;
 }
 
+Vector2 ClientApp::GetInputDirection(uint8 input)
+{
+    const bool player_move_up = input & (1 << int32(gameplay::Action::Up));
+    const bool player_move_down = input & (1 << int32(gameplay::Action::Down));
+    const bool player_move_left = input & (1 << int32(gameplay::Action::Left));
+    const bool player_move_right = input & (1 << int32(gameplay::Action::Right));
+
+    Vector2 inputDirection=Vector2::Zero;
+
+    if (player_move_up) {
+        inputDirection.y_ -= 1.0f;
+    }
+    if (player_move_down) {
+        inputDirection.y_ += 1.0f;
+    }
+    if (player_move_left) {
+        inputDirection.x_ -= 1.0f;
+    }
+    if (player_move_right) {
+        inputDirection.x_ += 1.0f;
+    }
+    return inputDirection;
+}
+
 void ClientApp::on_draw () {
     renderer_.clear ({ 0.2f, 0.3f, 0.4f, 1.0f });
+
     if (networkData.detailsOverlay) {
         renderer_.render_text_va ({ 2,6 }, player_.playerColor, 1, "Packet Loss: %f", networkData.packetLoss);
         renderer_.render_text_va ({ 2,12 }, player_.playerColor, 1, "Packets Sent: %d", networkData.packetsSent);
@@ -221,12 +297,24 @@ void ClientApp::on_draw () {
         renderer_.render_text_va ({ 2,30 }, player_.playerColor, 1, "Packets Recieved: %d", networkData.packetsReceived);
         renderer_.render_text_va ({ 2,36 }, player_.playerColor, 1, "Round Trip Time: %f", networkData.RTT.as_seconds ());
         renderer_.render_text_va ({ 2,42 }, player_.playerColor, 1, "Bytes recieved: %d", networkData.dataSize);
+        if (ConnectionCheck()) {
+            renderer_.render_text_va({ 2,48 }, player_.playerColor, 1, "Connected at %s", serverIP.as_string());
+        }
+        else {
+            renderer_.render_text({ 2,48}, player_.playerColor, 1, "Disconnected");
+        }
     }
     switch (gameState) {
         case gameplay::GameState::Searching: {
             if (serverFound) {
                 renderer_.render_text_va ({ 2,2 }, Color::Yellow, 1, "Server found at: %s", serverIP.as_string ());
                 renderer_.render_text ({ 3,12 }, Color::Red, 1, "Do you want to connect? ");
+            }
+            break;
+        }
+        case gameplay::GameState::Setup: {
+            if (player_.playerID < 4) {
+                renderer_.render_rectangle_fill({ int32(playerStartPositions[player_.playerID].x_), int32(playerStartPositions[player_.playerID].y_), 20, 20 }, playerColors[player_.playerID]);
             }
             break;
         }
@@ -243,7 +331,7 @@ void ClientApp::on_draw () {
                     renderer_.render_rectangle_fill ({ static_cast<int32>(bullets[i].position_.x_),static_cast<int32>(bullets[i].position_.y_),5,5 }, playerColors[i]);
                 }
             }
-            renderer_.render_text_va ({ window_.width_/2,18 }, playerColors[winnerID], 1, "YOU");
+            renderer_.render_text_va ({ window_.width_/2,18 }, playerColors[winnerID], 1, "YOU WIN");
             break;
         }
         case charlie::gameplay::GameState::Exit: {
@@ -299,7 +387,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                         temp.tick = recievedServerTick;
                         bullets[i].active = message.bulletActive;
                         bullets[i].positionHistory.push_back (temp);
-                        bullets[i].position_ = message.bulletPosition;
+                        bullets[i].recievedPosition = message.bulletPosition;
                         break;
                     }
                 }
@@ -346,6 +434,10 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 }
                 const Time current = Time (message.server_time_);
                 recievedServerTick = message.server_tick_;
+                uint32 offset = recievedServerTick - clientTick;
+                uint32 latency =(uint32)((connection_.latency().as_seconds() / tickrate_.as_seconds())*2);
+                uint32 sendRate = (uint32)(Time(1.0 / 20.0).as_seconds());
+                offsetTick = offset+ latency+6+sendRate;
                 break;
             }
             case network::NETWORK_MESSAGE_ENTITY_STATE:
@@ -363,8 +455,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                             temp.position = message.position_;
                             temp.tick = recievedServerTick;
                             entity_[i].positionHistory.push_back (temp);
-                            entity_[i].position_ = message.position_;
                             entity_[i].entityColor = playerColors[entity_[i].entityID];
+                            entity_[i].recievedPosition = message.position_;
                         }
                         break;
                     }
@@ -380,9 +472,10 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 if (message.playerID == player_.playerID) {
                     player_.alive = message.playerAlive;
                     if (message.playerAlive) {
-                        player_.position_ = message.position_;
+                        recievedPosition = message.position_;
                         Color tempColor;
                         player_.playerColor = playerColors[player_.playerID];
+                        CheckPlayerPosition(recievedServerTick,message.position_);
                     }
                 }
                 break;
@@ -396,6 +489,33 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 winnerID = message.winnerID;
             }break;
 
+            case network::NETWORK_MESSAGE_GAMESTATE: {
+                network::NetworkMessageGameState message;
+                if (!message.read(reader)) {
+                    assert(!"Could not read message!");
+                }
+                switch (message.bits)
+                {
+                case 0: {
+                    gameState = gameplay::GameState::Searching;
+                    break;
+                }
+                case 1: {
+                    gameState = gameplay::GameState::Setup;
+                    break;
+                }
+                case 2: {
+                    gameState = gameplay::GameState::Gameplay;
+                    break;
+                      }
+                case 3: {
+                    gameState = gameplay::GameState::Exit;
+                    break;
+                }
+                }
+                break;
+            }
+
             default:
             {
                 assert (!"unknown message type received from server!");
@@ -405,14 +525,60 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 }
 
 void ClientApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
-    network::NetworkMessageInputCommand command (input_bits_, player_.playerID, sequence);
-    networkData.sequenceNumber = sequence;
-    networkData.sequenceStack.push_back (networkData.sequenceNumber);
-    if (!command.write (writer)) {
-        assert (!"could not write network command!");
+
+    for (auto& in : inputLibrary) {
+        if (lastSentTick > in.tick)
+            continue;
+        lastSentTick = in.tick;
+        network::NetworkMessageInputCommand command(in.inputBits, player_.playerID,in.tick );
+        networkData.sequenceNumber = sequence;
+        networkData.sequenceStack.push_back(networkData.sequenceNumber);
+        if (!command.write(writer)) {
+            assert(!"could not write network command!");
+        }
+        networkData.packetsSent++;
+        networkData.lastSent = connection_.last_sent_time_;
     }
-    networkData.packetsSent++;
-    networkData.lastSent = connection->last_sent_time_;
+}
+
+void ClientApp::CheckPlayerPosition(uint32 serverTick, Vector2 serverPosition)
+{
+    auto in = inputLibrary.begin();
+
+    while (in != inputLibrary.end()) {
+        if ( serverTick == (*in).tick) {
+            if (Vector2::distance(serverPosition, (*in).calculatedPosition) > 5) {
+                networkData.inputMispredictions++;
+                FixPlayerPositions(serverTick, serverPosition);
+            }
+            inputLibrary.erase(inputLibrary.begin(), in);
+            break;
+        }
+    }
+
+
+}
+
+void ClientApp::FixPlayerPositions(uint32 serverTick, Vector2 serverPosition)
+{
+    auto in = inputLibrary.begin();
+    while (in != inputLibrary.end()) {
+        if ((*in).tick == serverTick) {
+            (*in).calculatedPosition = serverPosition;
+            continue;
+        }
+        if ((*in).tick > serverTick) {
+            Vector2 dir= GetInputDirection((*in).inputBits);
+            if (dir.length() > 0.0f) {
+                dir.normalize();
+                serverPosition += dir;
+            }
+
+            (*in).calculatedPosition = serverPosition;
+        }
+    }
+    player_.position_ = serverPosition;
+
 }
 
 bool ClientApp::ServerDiscovery () {
@@ -482,6 +648,14 @@ bool ClientApp::ServerDiscovery () {
     }
     else
         return false;
+}
+
+bool ClientApp::ConnectionCheck()
+{
+    if (connection_.state_ != network::Connection::State::Connected)
+        return false;
+    else
+        return true;
 }
 
 void ConnectionHandler::on_rejected (const uint8 reason) {

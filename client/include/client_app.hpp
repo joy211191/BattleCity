@@ -45,8 +45,6 @@ struct ClientApp final : Application, network::IConnectionListener {
    gameplay::Entity entity_[3];
 
    gameplay::Bullet bullets[4];
-   
-   Time interpolatorAccumulator;
 
    const float speed = 100.0;
    Vector2 playerStartPositions[4];
@@ -65,22 +63,34 @@ struct ClientApp final : Application, network::IConnectionListener {
 	   bool detailsOverlay;
 	   charlie::DynamicArray<int> sequenceStack;
 	   int32 dataSize;
+	   int32 inputMispredictions;
    };
 
    DataStruct networkData;
+   uint32 offsetTick;
 
-   class InputPrediction {
+   class Inputinator {
    public:
 	   uint8 inputBits;
 	   uint32 tick;
 	   Vector2 calculatedPosition;
    };
-   charlie::DynamicArray<InputPrediction> inputLibrary;
 
-   uint32 globalTick;
+   Vector2 direction;
+
+   Vector2 GetInputDirection(uint8 input);
+
+   void CheckPlayerPosition(uint32 serverTick,Vector2 serverPosition);
+   void FixPlayerPositions(uint32 serverTick, Vector2 serverPosition);
+
+   charlie::DynamicArray<Inputinator> inputLibrary;
+
+   uint32 clientTick;
    uint32 recievedServerTick;
 
    Color playerColors[4];
+
+   uint32 lastSentTick;
 
    network::UDPSocket socket;
    network::IPAddress serverIP;
@@ -89,8 +99,12 @@ struct ClientApp final : Application, network::IConnectionListener {
    int8 iterator;
    bool idApplied;
    int winnerID;
-
-   bool CollisionCheck (gameplay::Player playerA, gameplay::Player playerB);
+   Vector2 recievedPosition;
+   Vector2 bulletServerPosition;
+   Vector2 entityServerPosition;
+   bool ConnectionCheck();
+   void EntityInterpolator();
+   void BulletInpterpolator();
 };
 
 #endif // !CLIENT_APP_HPP_INCLUDED

@@ -127,7 +127,7 @@ namespace charlie {
           : type_ (NETWORK_MESSAGE_INPUT_COMMAND)
           , bits_ (bits),
           id (playerID),
-          sequenceNumber (tick)
+          tick_ (tick)
       {
       }
 
@@ -140,18 +140,18 @@ namespace charlie {
       {
          return serialize(writer);
       }
-
-      NetworkMessagePlayerState::NetworkMessagePlayerState (const Vector2& position, const int32& id,const uint8 &alive)
-          : type_ (NETWORK_MESSAGE_PLAYER_STATE)
-          , position_ (position)
-          , playerID (id),
-          playerAlive(alive)
-      {
-      }
-
      
       NetworkMessagePlayerState::NetworkMessagePlayerState()
          : type_(NETWORK_MESSAGE_PLAYER_STATE)
+      {
+      }
+
+      NetworkMessagePlayerState::NetworkMessagePlayerState(const Vector2& position, const int32& id, const uint8& alive, const int32 tick)
+         : type_(NETWORK_MESSAGE_PLAYER_STATE)
+          , position_(position)
+          , playerID(id),
+          playerAlive(alive),
+          tick_(tick)
       {
       }
 

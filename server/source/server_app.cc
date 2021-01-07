@@ -81,15 +81,16 @@ bool ServerApp::on_tick (const Time& dt) {
             break;
         }
         case gameplay::GameState::Gameplay: {
-            for (auto& in : inputLibrary) {
-                if (players_[in.playerID].alive) {
+            auto in = inputLibrary.begin();
+            while(in!=inputLibrary.end()) {
+                if (players_[(*in).playerID].alive) {
                     const float speed = 100.0;
-                    const bool player_move_up = player_input_bits_[in.playerID] && 1;
-                    const bool player_move_down = player_input_bits_[in.playerID] && 2;
-                    const bool player_move_left = player_input_bits_[in.playerID] && 4;
-                    const bool player_move_right = player_input_bits_[in.playerID] && 8;
-                    const bool player_shoot = player_input_bits_[in.playerID] && 16;
-
+                    const bool player_move_up = player_input_bits_[(*in).playerID] && 1;
+                    const bool player_move_down = player_input_bits_[(*in).playerID] && 2;
+                    const bool player_move_left = player_input_bits_[(*in).playerID] && 4;
+                    const bool player_move_right = player_input_bits_[(*in).playerID] && 8;
+                    const bool player_shoot = player_input_bits_[(*in).playerID] && 16;
+                    inputLibrary.erase(inputLibrary.begin(), in);
 
                     Vector2 direction;
                     if (player_move_up) {
@@ -107,24 +108,24 @@ bool ServerApp::on_tick (const Time& dt) {
 
                    if ( direction.length() > 0) {
                         charlie::gameplay::Event tempEvent;
-                        tempEvent.playerID = players_[in.playerID].playerID;
-                        tempEvent.position = players_[in.playerID].position_;
+                        tempEvent.playerID = players_[(*in).playerID].playerID;
+                        tempEvent.position = players_[(*in).playerID].position_;
                         tempEvent.state = charlie::gameplay::EventStates::Shooting;
                         eventQueue.push_back(tempEvent);
-                        if (!bullets[in.playerID].active) {
-                            bullets[in.playerID].bulletID = in.playerID;
-                            bullets[in.playerID].active = true;
+                        if (!bullets[(*in).playerID].active) {
+                            bullets[(*in).playerID].bulletID = (*in).playerID;
+                            bullets[(*in).playerID].active = true;
                             Vector2 offsetPosition;
                             offsetPosition.x_ = 10;
                             offsetPosition.y_ = 10;
-                            bullets[in.playerID].position_ = players_[in.playerID].position_ + offsetPosition;
-                            bullets[in.playerID].direction = direction;
-                            bullets[in.playerID].direction.normalize();
+                            bullets[(*in).playerID].position_ = players_[(*in).playerID].position_ + offsetPosition;
+                            bullets[(*in).playerID].direction = direction;
+                            bullets[(*in).playerID].direction.normalize();
                         }
                     }
                     if (direction.length() > 0.0f) {
                         direction.normalize();
-                        players_[in.playerID].position_ += direction * speed * tickrate_.as_seconds();
+                        players_[(*in).playerID].position_ += direction * speed * tickrate_.as_seconds();
                     }
                 }
             }
@@ -266,17 +267,12 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
         if (!command.read (reader)) {
             assert (!"could not read command!");
         }
+        printf("Recieved tick: %d\n", (int)command.tick_);
         ServerInputinator temp;
         temp.playerID = command.id;
         temp.tick = command.tick_;
         temp.inputBits = command.bits_;
         inputLibrary.push_back(temp);
-        //for (int i = 0; players_.size (); i++) {
-        //    if (players_[i].playerID == id) {
-        //        player_input_bits_[i] = command.bits_;
-        //        break;
-        //    }
-        //}
     }
 }
 
@@ -336,7 +332,7 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
                     temp.sequenceNumber = sequence;
                     players_[i].eventQueue.push_back (temp);
                 }
-                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID, players_[i].alive);
+                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID, players_[i].alive,tick_);
                 if (!message.write (writer)) {
                     assert (!"failed to write message!");
                 }

@@ -148,7 +148,7 @@ bool ClientApp::on_tick (const Time& dt) {
         }
 
         case gameplay::GameState::Setup: {
-            input_bits_ = 0;
+          /*  input_bits_ = 0;
             if (keyboard_.down(Keyboard::Key::W)) {
                 input_bits_ |= (1 << int32(gameplay::Action::Up));
             }
@@ -167,7 +167,7 @@ bool ClientApp::on_tick (const Time& dt) {
             if (keyboard_.down(Keyboard::Key::Space)) {
                 input_bits_ |= (1 << int32(gameplay::Action::Shoot));
             }
-            printf("%d", input_bits_);
+            printf("%d", input_bits_);*/
 
             if (player_.playerID < 4) {
                 player_.position_ = playerStartPositions[player_.playerID];
@@ -438,6 +438,7 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 uint32 latency =(uint32)((connection_.latency().as_seconds() / tickrate_.as_seconds())*2);
                 uint32 sendRate = (uint32)(Time(1.0 / 20.0).as_seconds());
                 offsetTick = offset+ latency+6+sendRate;
+                printf("Recieved tick: %d\n", (int)message.server_tick_);
                 break;
             }
             case network::NETWORK_MESSAGE_ENTITY_STATE:
@@ -475,7 +476,8 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                         recievedPosition = message.position_;
                         Color tempColor;
                         player_.playerColor = playerColors[player_.playerID];
-                        CheckPlayerPosition(recievedServerTick,message.position_);
+                        player_.position_ = message.position_;
+                       // CheckPlayerPosition(recievedServerTick,message.position_);
                     }
                 }
                 break;
@@ -525,7 +527,6 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 }
 
 void ClientApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
-
     for (auto& in : inputLibrary) {
         if (lastSentTick > in.tick)
             continue;
@@ -533,6 +534,7 @@ void ClientApp::on_send (network::Connection* connection, const uint16 sequence,
         network::NetworkMessageInputCommand command(in.inputBits, player_.playerID,in.tick );
         networkData.sequenceNumber = sequence;
         networkData.sequenceStack.push_back(networkData.sequenceNumber);
+        printf("Sent tick: %d\n", (int)command.tick_);
         if (!command.write(writer)) {
             assert(!"could not write network command!");
         }
@@ -555,8 +557,6 @@ void ClientApp::CheckPlayerPosition(uint32 serverTick, Vector2 serverPosition)
             break;
         }
     }
-
-
 }
 
 void ClientApp::FixPlayerPositions(uint32 serverTick, Vector2 serverPosition)

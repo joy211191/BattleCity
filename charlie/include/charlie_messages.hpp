@@ -137,7 +137,6 @@ namespace charlie {
             result &= stream.serialize(type_);
             result &= stream.serialize(bits_);
             result &= stream.serialize (id);
-            result &= stream.serialize (sequenceNumber);
             result &= stream.serialize(tick_);
             return result;
          }
@@ -146,12 +145,11 @@ namespace charlie {
          uint8 type_;
          uint8 bits_;
          int32 id;
-         int32 sequenceNumber;
       };
 
       struct NetworkMessagePlayerState {
          NetworkMessagePlayerState();
-         explicit NetworkMessagePlayerState(const Vector2 &position,const int32 &id,const uint8 &alive);
+         explicit NetworkMessagePlayerState(const Vector2 &position,const int32 &id,const uint8 &alive,const int32 tick);
 
          bool read(NetworkStreamReader &reader);
          bool write(NetworkStreamWriter &writer);
@@ -165,6 +163,7 @@ namespace charlie {
             result &= stream.serialize(position_.y_);
             result &= stream.serialize (playerID);
             result &= stream.serialize (playerAlive);
+            result &= stream.serialize(tick_);
             return result;
          }
 
@@ -172,6 +171,7 @@ namespace charlie {
          uint8 type_;
          Vector2 position_;
          int32 playerID;
+         int32 tick_;
       };
 
       struct NetoworkMessageWinner {

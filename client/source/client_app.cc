@@ -101,45 +101,50 @@ void ClientApp::BulletInpterpolator()
     }
 }
 
-bool ClientApp::on_tick (const Time& dt) {
-    if (keyboard_.pressed (Keyboard::Key::Escape)) {
-        on_exit ();
+bool ClientApp::on_tick(const Time& dt) {
+    if (keyboard_.pressed(Keyboard::Key::Escape)) {
+        on_exit();
         return false;
     }
-    if (keyboard_.pressed (Keyboard::Key::Tab)) {
+    if (keyboard_.pressed(Keyboard::Key::Tab)) {
         networkData.detailsOverlay = !networkData.detailsOverlay;
     }
-    int temp = 0;
-    switch (gameState)
-    {
-    case gameplay::GameState::Searching: {
-        temp = 0;
-        break;
-    }
-    case gameplay::GameState::Setup: {
-        temp = 1;
-        break;
-    }
-    case gameplay::GameState::Gameplay: {
-        temp = 2;
-        break;
-    }
-    case gameplay::GameState::Exit: {
-        temp = 3;
-        break;
-    }
-    default:
-        break;
-    }
+    accumulator_ += dt;
+    while (accumulator_ >= tickrate_) {
+        accumulator_ -= tickrate_;
+        clientTick++;
+        printf("Tick number %d\n", recievedServerTick);
+        int temp = 0;
+        switch (gameState)
+        {
+        case gameplay::GameState::Searching: {
+            temp = 0;
+            break;
+        }
+        case gameplay::GameState::Setup: {
+            temp = 1;
+            break;
+        }
+        case gameplay::GameState::Gameplay: {
+            temp = 2;
+            break;
+        }
+        case gameplay::GameState::Exit: {
+            temp = 3;
+            break;
+        }
+        default:
+            break;
+        }
 
-    //printf("%d" ,temp);
-    switch (gameState) {
+        //printf("%d" ,temp);
+        switch (gameState) {
         case gameplay::GameState::Searching: {
             if (!serverFound)
-                serverFound = ServerDiscovery ();
+                serverFound = ServerDiscovery();
             if (serverFound) {
-                if (keyboard_.pressed (Keyboard::Key::Space) && (connection_.state_ == network::Connection::State::Invalid || connection_.is_disconnected ())) {
-                    connection_.connect (serverIP);
+                if (keyboard_.pressed(Keyboard::Key::Space) && (connection_.state_ == network::Connection::State::Invalid || connection_.is_disconnected())) {
+                    connection_.connect(serverIP);
                 }
             }
             if (connection_.is_connected()) {
@@ -149,26 +154,26 @@ bool ClientApp::on_tick (const Time& dt) {
         }
 
         case gameplay::GameState::Setup: {
-          /*  input_bits_ = 0;
-            if (keyboard_.down(Keyboard::Key::W)) {
-                input_bits_ |= (1 << int32(gameplay::Action::Up));
-            }
+            /*  input_bits_ = 0;
+              if (keyboard_.down(Keyboard::Key::W)) {
+                  input_bits_ |= (1 << int32(gameplay::Action::Up));
+              }
 
-            if (keyboard_.down(Keyboard::Key::S)) {
-                input_bits_ |= (1 << int32(gameplay::Action::Down));
-            }
+              if (keyboard_.down(Keyboard::Key::S)) {
+                  input_bits_ |= (1 << int32(gameplay::Action::Down));
+              }
 
-            if (keyboard_.down(Keyboard::Key::A)) {
-                input_bits_ |= (1 << int32(gameplay::Action::Left));
-            }
+              if (keyboard_.down(Keyboard::Key::A)) {
+                  input_bits_ |= (1 << int32(gameplay::Action::Left));
+              }
 
-            if (keyboard_.down(Keyboard::Key::D)) {
-                input_bits_ |= (1 << int32(gameplay::Action::Right));
-            }
-            if (keyboard_.down(Keyboard::Key::Space)) {
-                input_bits_ |= (1 << int32(gameplay::Action::Shoot));
-            }
-            printf("%d", input_bits_);*/
+              if (keyboard_.down(Keyboard::Key::D)) {
+                  input_bits_ |= (1 << int32(gameplay::Action::Right));
+              }
+              if (keyboard_.down(Keyboard::Key::Space)) {
+                  input_bits_ |= (1 << int32(gameplay::Action::Shoot));
+              }
+              printf("%d", input_bits_);*/
 
             if (player_.playerID < 4) {
                 player_.position_ = playerStartPositions[player_.playerID];
@@ -180,82 +185,77 @@ bool ClientApp::on_tick (const Time& dt) {
         case gameplay::GameState::Gameplay: {
             if (connection_.state_ != network::Connection::State::Connected)
                 gameState = gameplay::GameState::Searching;
-            accumulator_ += dt;
-            while (accumulator_ >= tickrate_) {
-                printf("Tick number %d\n", recievedServerTick);
-                recievedServerTick;
-                accumulator_ -= tickrate_;      
-                EntityInterpolator();
-                BulletInpterpolator();
-                int counter = 0;
-                if (player_.alive) {
-                    for (auto& en : entity_) {
-                        if (en.alive) {
-                            counter++;
-                        }
-                    }
-                    if (counter == 0) {
-                        gameState = gameplay::GameState::Exit;
+            EntityInterpolator();
+            BulletInpterpolator();
+            int counter = 0;
+            if (player_.alive) {
+                for (auto& en : entity_) {
+                    if (en.alive) {
+                        counter++;
                     }
                 }
-                input_bits_ = 0;
-                if (player_.alive) {
-                    if (player_.position_.y_ > 0) {
-                        if (keyboard_.down(Keyboard::Key::W)) {
-                            input_bits_ |= (1 << int32(gameplay::Action::Up));
-                        }
-                    }
-                    if (player_.position_.y_ < window_.height_) {
-                        if (keyboard_.down(Keyboard::Key::S)) {
-                            input_bits_ |= (1 << int32(gameplay::Action::Down));
-                        }
-                    }
-                    if (player_.position_.x_ > 0) {
-                        if (keyboard_.down(Keyboard::Key::A)) {
-                            input_bits_ |= (1 << int32(gameplay::Action::Left));
-                        }
-                    }
-                    if (player_.position_.x_ < window_.width_) {
-                        if (keyboard_.down(Keyboard::Key::D)) {
-                            input_bits_ |= (1 << int32(gameplay::Action::Right));
-                        }
-                    }
-                    if (keyboard_.down(Keyboard::Key::Space)) {
-                        input_bits_ |= (1 << int32(gameplay::Action::Shoot));
-                    }
-                    direction = GetInputDirection(input_bits_);
-
-                        Inputinator tempInput;
-                        tempInput.inputBits = input_bits_;
-                        tempInput.tick = recievedServerTick;
-                        tempInput.calculatedPosition = player_.position_ + direction;
-                        inputLibrary.push_back(tempInput);
-                    if (direction.length() > 0.0f) {
-                        direction.normalize();
-                        player_.position_ = player_.position_ + direction;
-                    }
-
-                    //if (inputLibrary[0].tick - tickrate_.as_seconds() > 20000) {
-                    //    inputLibrary.erase(inputLibrary.begin());
-                    //}
-
-                    /*if (Vector2::distance(recievedPosition, temp.calculatedPosition) < 5) {
-                        float tempDist = Vector2::distance (player_.position_, temp.calculatedPosition);
-                        player_.position_ = Vector2::lerp(player_.position_, temp.calculatedPosition, tempDist * tickrate_.as_seconds());
-                    }
-                    else {
-                        player_.position_ = recievedPosition;
-                    }*/
-                }
-                else {
+                if (counter == 0) {
                     gameState = gameplay::GameState::Exit;
                 }
-                break;
             }
+            input_bits_ = 0;
+            if (player_.alive) {
+                if (player_.position_.y_ > 0) {
+                    if (keyboard_.down(Keyboard::Key::W)) {
+                        input_bits_ |= (1 << int32(gameplay::Action::Up));
+                    }
+                }
+                if (player_.position_.y_ < window_.height_) {
+                    if (keyboard_.down(Keyboard::Key::S)) {
+                        input_bits_ |= (1 << int32(gameplay::Action::Down));
+                    }
+                }
+                if (player_.position_.x_ > 0) {
+                    if (keyboard_.down(Keyboard::Key::A)) {
+                        input_bits_ |= (1 << int32(gameplay::Action::Left));
+                    }
+                }
+                if (player_.position_.x_ < window_.width_) {
+                    if (keyboard_.down(Keyboard::Key::D)) {
+                        input_bits_ |= (1 << int32(gameplay::Action::Right));
+                    }
+                }
+                if (keyboard_.down(Keyboard::Key::Space)) {
+                    input_bits_ |= (1 << int32(gameplay::Action::Shoot));
+                }
+                direction = GetInputDirection(input_bits_);
+
+                Inputinator tempInput;
+                tempInput.inputBits = input_bits_;
+                tempInput.tick = recievedServerTick;
+                tempInput.calculatedPosition = player_.position_ + direction;
+                inputLibrary.push_back(tempInput);
+                if (direction.length() > 0.0f) {
+                    direction.normalize();
+                    player_.position_ = player_.position_ + direction;
+                }
+
+                //if (inputLibrary[0].tick - tickrate_.as_seconds() > 20000) {
+                //    inputLibrary.erase(inputLibrary.begin());
+                //}
+
+                /*if (Vector2::distance(recievedPosition, temp.calculatedPosition) < 5) {
+                    float tempDist = Vector2::distance (player_.position_, temp.calculatedPosition);
+                    player_.position_ = Vector2::lerp(player_.position_, temp.calculatedPosition, tempDist * tickrate_.as_seconds());
+                }
+                else {
+                    player_.position_ = recievedPosition;
+                }*/
+            }
+            else {
+                gameState = gameplay::GameState::Exit;
+            }
+            break;
         }
         case gameplay::GameState::Exit: {
 
             break;
+        }
         }
     }
     return true;

@@ -128,7 +128,7 @@ bool ServerApp::on_tick (const Time& dt) {
                         players_[(*in).playerID].position_ += direction * speed * tickrate_.as_seconds();
                     }
                 }
-                in++;
+             //   in++;
             }
             for (auto& bl : bullets) {
                 Bullet (bl.bulletID, bl.direction);
@@ -279,14 +279,12 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
 
 void ServerApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
     auto id = clients_.find_client ((uint64)connection);
-    {
         for (int i = 0; i < players_.size (); i++) {
             network::NetworkMessageServerTick message (Time::now ().as_ticks (), tick_, id);
             if (!message.write (writer)) {
                 assert (!"failed to write message!");
             }
         }
-    }
     uint8 stateBits = 0;
     switch (gameState)
     {

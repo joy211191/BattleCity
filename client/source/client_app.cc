@@ -16,7 +16,7 @@ constexpr auto array_size(T(&)[N])
 ClientApp::ClientApp()
    : mouse_(window_.mouse_)
    , keyboard_(window_.keyboard_)
-   , tickrate_(1.0 /  20.0)
+   , tickrate_(1.0 /  60.0)
    , input_bits_(0)
 {
     lastSentTick = 0;
@@ -109,79 +109,78 @@ bool ClientApp::on_tick(const Time& dt) {
     if (keyboard_.pressed(Keyboard::Key::Tab)) {
         networkData.detailsOverlay = !networkData.detailsOverlay;
     }
-    accumulator_ += dt;
     int temp = 0;
-    switch (gameState)
-    {
-        case gameplay::GameState::Searching: {
-            temp = 0;
-            break;
+    accumulator_ += dt;
+    while (accumulator_ >= tickrate_) {
+        accumulator_ -= tickrate_;
+        clientTick++;
+        switch (gameState)
+        {
+            case gameplay::GameState::Searching: {
+                temp = 0;
+                break;
+            }
+            case gameplay::GameState::Setup: {
+                temp = 1;
+                break;
+            }
+            case gameplay::GameState::Gameplay: {
+                temp = 2;
+                break;
+            }
+            case gameplay::GameState::Exit: {
+                temp = 3;
+                break;
+            }
+            default:
+                break;
         }
-        case gameplay::GameState::Setup: {
-            temp = 1;
-            break;
-        }
-        case gameplay::GameState::Gameplay: {
-            temp = 2;
-            break;
-        }
-        case gameplay::GameState::Exit: {
-            temp = 3;
-            break;
-        }
-        default:
-            break;
-    }
-
-    //std::printf("%d" ,temp);
-    switch (gameState) {
-        case gameplay::GameState::Searching: {
-            if (!serverFound)
-                serverFound = ServerDiscovery();
-            if (serverFound) {
-                if (keyboard_.pressed(Keyboard::Key::Space) && (connection_.state_ == network::Connection::State::Invalid || connection_.is_disconnected())) {
-                    connection_.connect(serverIP);
+        switch (gameState) {
+            case gameplay::GameState::Searching: {
+                if (!serverFound)
+                    serverFound = ServerDiscovery();
+                if (serverFound) {
+                    if (keyboard_.pressed(Keyboard::Key::Space) && (connection_.state_ == network::Connection::State::Invalid || connection_.is_disconnected())) {
+                        connection_.connect(serverIP);
+                    }
                 }
+                if (connection_.is_connected()) {
+                    gameState = gameplay::GameState::Setup;
+                }
+                break;
             }
-            if (connection_.is_connected()) {
-                gameState = gameplay::GameState::Setup;
+
+            case gameplay::GameState::Setup: {
+                /*  input_bits_ = 0;
+                  if (keyboard_.down(Keyboard::Key::W)) {
+                      input_bits_ |= (1 << int32(gameplay::Action::Up));
+                  }
+
+                  if (keyboard_.down(Keyboard::Key::S)) {
+                      input_bits_ |= (1 << int32(gameplay::Action::Down));
+                  }
+
+                  if (keyboard_.down(Keyboard::Key::A)) {
+                      input_bits_ |= (1 << int32(gameplay::Action::Left));
+                  }
+
+                  if (keyboard_.down(Keyboard::Key::D)) {
+                      input_bits_ |= (1 << int32(gameplay::Action::Right));
+                  }
+                  if (keyboard_.down(Keyboard::Key::Space)) {
+                      input_bits_ |= (1 << int32(gameplay::Action::Shoot));
+                  }
+                  std::printf("%d", input_bits_);*/
+
+                if (player_.playerID < 4) {
+                    player_.position_ = playerStartPositions[player_.playerID];
+                    player_.playerColor = playerColors[player_.playerID];
+                }
+                break;
             }
-            break;
-        }
 
-        case gameplay::GameState::Setup: {
-            /*  input_bits_ = 0;
-              if (keyboard_.down(Keyboard::Key::W)) {
-                  input_bits_ |= (1 << int32(gameplay::Action::Up));
-              }
+            case gameplay::GameState::Gameplay: {
 
-              if (keyboard_.down(Keyboard::Key::S)) {
-                  input_bits_ |= (1 << int32(gameplay::Action::Down));
-              }
-
-              if (keyboard_.down(Keyboard::Key::A)) {
-                  input_bits_ |= (1 << int32(gameplay::Action::Left));
-              }
-
-              if (keyboard_.down(Keyboard::Key::D)) {
-                  input_bits_ |= (1 << int32(gameplay::Action::Right));
-              }
-              if (keyboard_.down(Keyboard::Key::Space)) {
-                  input_bits_ |= (1 << int32(gameplay::Action::Shoot));
-              }
-              std::printf("%d", input_bits_);*/
-
-            if (player_.playerID < 4) {
-                player_.position_ = playerStartPositions[player_.playerID];
-                player_.playerColor = playerColors[player_.playerID];
-            }
-            break;
-        }
-
-        case gameplay::GameState::Gameplay: {
-            while (accumulator_ >= tickrate_) {
-                accumulator_ -= tickrate_;
-                clientTick++;
                 if (connection_.state_ != network::Connection::State::Connected)
                     gameState = gameplay::GameState::Searching;
                 EntityInterpolator();
@@ -225,15 +224,13 @@ bool ClientApp::on_tick(const Time& dt) {
                     direction = GetInputDirection(input_bits_);
                     Inputinator tempInput;
                     tempInput.inputBits = input_bits_;
-                    tempInput.tick = recievedServerTick;
-                    tempInput.calculatedPosition = player_.position_ + direction*speed* tickrate_.as_seconds();
+                    tempInput.tick = clientTick + offsetTick;
+                    tempInput.calculatedPosition = player_.position_ + direction * speed * tickrate_.as_seconds();
                     inputLibrary.push_back(tempInput);
+                    //printf("Lubrary size: %d\n", (int)inputLibrary.size());
                     if (direction.length() > 0.0f) {
                         direction.normalize();
-                        player_.position_ += direction*speed* tickrate_.as_seconds();
-                    }
-                    if (inputLibrary.size()>50 && inputLibrary[0].tick - recievedServerTick > 20) {
-                        inputLibrary.erase(inputLibrary.begin());
+                        player_.position_ += direction * speed * tickrate_.as_seconds();
                     }
 
                     /*if (Vector2::distance(recievedPosition, temp.calculatedPosition) < 5) {
@@ -249,10 +246,10 @@ bool ClientApp::on_tick(const Time& dt) {
                 }
                 break;
             }
-        }
-        case gameplay::GameState::Exit: {
+            case gameplay::GameState::Exit: {
 
-            break;
+                break;
+            }
         }
     }
     return true;
@@ -432,9 +429,10 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
                 const Time current = Time(message.server_time_);
                 recievedServerTick = message.server_tick_;
                 uint32 offset = recievedServerTick - clientTick;
-                uint32 latency = (uint32)((connection_.latency().as_seconds() / tickrate_.as_seconds()) * 2);
-                uint32 sendRate = (uint32)(Time(1.0 / 20.0).as_seconds());
-                offsetTick = offset + latency + 6 + sendRate;
+                uint32 latency = (uint32)(connection_.latency().as_seconds() / tickrate_.as_seconds());
+                uint32 sendRate = (uint32)(Time(1.0/20.0).as_seconds());
+                offsetTick = offset + latency +latency+ 3 + sendRate;
+                printf("Client tick %d, ServerT %d , Offset tick: %d\n", (int)clientTick , (int)recievedServerTick, (int)offset);
                 break;
             }
             case network::NETWORK_MESSAGE_ENTITY_STATE:
@@ -463,21 +461,22 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
             case network::NETWORK_MESSAGE_PLAYER_STATE:
             {
                 network::NetworkMessagePlayerState message;
-                if (!message.read (reader)) {
-                    assert (!"could not read message!");
+                if (!message.read(reader)) {
+                    assert(!"could not read message!");
                 }
-                if (message.playerID == player_.playerID) {
-                    player_.alive = message.playerAlive;
-                    if (message.playerAlive) {
-                        recievedPosition = message.position_;
-                        Color tempColor;
-                        player_.playerColor = playerColors[player_.playerID];
-                        if(gameState==gameplay::GameState::Gameplay)
-                            CheckPlayerPosition(recievedServerTick,message.position_);
-                        else
-                            player_.position_ = message.position_;
-                    }
+                //printf("Player servertick: %d  Current tick: %d\n", (int)recievedServerTick,(int)clientTick);
+                //if (message.playerID == player_.playerID) {
+                player_.alive = message.playerAlive;
+                if (message.playerAlive) {
+                    recievedPosition = message.position_;
+                    Color tempColor;
+                    player_.playerColor = playerColors[player_.playerID];
+                    //if (gameState == gameplay::GameState::Gameplay)
+                        CheckPlayerPosition(recievedServerTick, message.position_);
+                    //else
+                        //player_.position_ = message.position_;
                 }
+                //}
                 break;
             }
 
@@ -526,35 +525,35 @@ void ClientApp::on_receive (network::Connection* connection, network::NetworkStr
 
 void ClientApp::on_send(network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
     if (gameState == gameplay::GameState::Gameplay) {
-        if(inputLibrary.size()>0) {
-          //  if (lastSentTick > inputLibrary[i].tick)
-            //    continue;
-        lastSentTick = inputLibrary[0].tick;
-        network::NetworkMessageInputCommand command(inputLibrary[inputLibrary.size()-1].inputBits, player_.playerID, inputLibrary[inputLibrary.size() - 1].tick);
-        networkData.sequenceNumber = sequence;
-        networkData.sequenceStack.push_back(networkData.sequenceNumber);
-        std::printf("Sent tick: %d\n", (int)command.tick_);
-        if (!command.write(writer)) {
-            assert(!"could not write network command!");
-        }
-        command.write(writer);
-        networkData.packetsSent++;
-        networkData.lastSent = connection_.last_sent_time_;
-        sentLibrary.push_back(inputLibrary[inputLibrary.size() - 1]);
+        for (int i = 0; i < inputLibrary.size(); i++) {
+            if (lastSentTick > inputLibrary[i].tick)
+                continue;
+            lastSentTick = inputLibrary[i].tick;
+            network::NetworkMessageInputCommand command(inputLibrary[i].inputBits, player_.playerID, inputLibrary[i].tick);
+            //networkData.sequenceNumber = sequence;
+            //networkData.sequenceStack.push_back(networkData.sequenceNumber);
+            //std::printf("Sent tick: %d\n", (int)command.tick_);
+            if (!command.write(writer)) {
+                assert(!"could not write network command!");
+            }
+            networkData.packetsSent++;
+            networkData.lastSent = connection_.last_sent_time_;
         }
     }
 }
 
 void ClientApp::CheckPlayerPosition(uint32 serverTick, Vector2 serverPosition)
 {
-    auto in = sentLibrary.begin();
-    while (in != sentLibrary.end()) {
+    auto in = inputLibrary.begin();
+    while (in != inputLibrary.end()) {
+        //printf("Servertick: %d, Tick: %d\n",serverTick, (*in).tick);
         if (serverTick == (*in).tick) {
+            printf("Found\n");
             if (Vector2::distance(serverPosition, (*in).calculatedPosition) > 5) {
                 networkData.inputMispredictions++;
                 FixPlayerPositions(serverTick, serverPosition);
             }
-            sentLibrary.erase(sentLibrary.begin(), in);
+            inputLibrary.erase(inputLibrary.begin(), in);
             break;
         }
         ++in;
@@ -563,8 +562,8 @@ void ClientApp::CheckPlayerPosition(uint32 serverTick, Vector2 serverPosition)
 
 void ClientApp::FixPlayerPositions(uint32 serverTick, Vector2 serverPosition)
 {
-    auto in = sentLibrary.begin();
-    while (in != sentLibrary.end()) {
+    auto in = inputLibrary.begin();
+    while (in != inputLibrary.end()) {
         if ((*in).tick == serverTick) {
             (*in).calculatedPosition = serverPosition;
             continue;

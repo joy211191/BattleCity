@@ -6,7 +6,7 @@
 #include <charlie.hpp>
 using namespace std;
 
-ServerApp::ServerApp () : tickrate_ (1.0 / 20.0), tick_ (0) {
+ServerApp::ServerApp () : tickrate_ (1.0 / 60.0), tick_ (0) {
     winnerID = 4;
     gameState = gameplay::GameState::Searching;
 
@@ -77,47 +77,54 @@ bool ServerApp::on_tick(const Time& dt) {
             }
             case gameplay::GameState::Gameplay: {
                 for (int i = 0; i < 4; i++) {
-                    if (players_[i].inputQueue.size() > 0) {
-                        const bool player_move_up = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Up));
-                        const bool player_move_down = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Down));
-                        const bool player_move_left = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Left));
-                        const bool player_move_right = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Right));
+                    uint8 tempInput=0;
+                    auto inp = players_[i].inputQueue.begin();
+                   while(inp!=players_[i].inputQueue.end()){
+                        if ((*inp).tick == tick_) {
+                            tempInput = (*inp).inputBit;
+                            players_[i].inputQueue.erase(players_[i].inputQueue.begin(), inp);
+                            break;
+                        }
+                    }
 
-                        Vector2 direction;
-                        if (player_move_up) {
-                            direction.y_ -= 1.0f;
-                        }
-                        if (player_move_down) {
-                            direction.y_ += 1.0f;
-                        }
-                        if (player_move_left) {
-                            direction.x_ -= 1.0f;
-                        }
-                        if (player_move_right) {
-                            direction.x_ += 1.0f;
-                        }
+                    const bool player_move_up = tempInput & (1 << int32(gameplay::Action::Up));
+                    const bool player_move_down = tempInput & (1 << int32(gameplay::Action::Down));
+                    const bool player_move_left = tempInput & (1 << int32(gameplay::Action::Left));
+                    const bool player_move_right = tempInput & (1 << int32(gameplay::Action::Right));
 
-                        if (direction.length() > 0.0f) {
-                            direction.normalize();
-                            players_[i].position_ += direction * speed * tickrate_.as_seconds();
-                        }
+                    Vector2 direction;
+                    if (player_move_up) {
+                        direction.y_ -= 1.0f;
+                    }
+                    if (player_move_down) {
+                        direction.y_ += 1.0f;
+                    }
+                    if (player_move_left) {
+                        direction.x_ -= 1.0f;
+                    }
+                    if (player_move_right) {
+                        direction.x_ += 1.0f;
+                    }
 
-                        charlie::gameplay::Event tempEvent;
-                        tempEvent.playerID = players_[i].playerID;
-                        tempEvent.position = players_[i].position_;
-                        tempEvent.state = charlie::gameplay::EventStates::Shooting;
-                        eventQueue.push_back(tempEvent);
-                        if (!bullets[i].active) {
-                            bullets[i].bulletID = i;
-                            bullets[i].active = true;
-                            Vector2 offsetPosition;
-                            offsetPosition.x_ = 10;
-                            offsetPosition.y_ = 10;
-                            bullets[i].position_ = players_[i].position_ + offsetPosition;
-                            bullets[i].direction = direction;
-                            bullets[i].direction.normalize();
-                        }
-                        players_[i].inputQueue.erase(players_[i].inputQueue.begin());
+                    if (direction.length() > 0.0f) {
+                        direction.normalize();
+                        players_[i].position_ += direction * speed * tickrate_.as_seconds();
+                    }
+
+                    charlie::gameplay::Event tempEvent;
+                    tempEvent.playerID = players_[i].playerID;
+                    tempEvent.position = players_[i].position_;
+                    tempEvent.state = charlie::gameplay::EventStates::Shooting;
+                    eventQueue.push_back(tempEvent);
+                    if (!bullets[i].active) {
+                        bullets[i].bulletID = i;
+                        bullets[i].active = true;
+                        Vector2 offsetPosition;
+                        offsetPosition.x_ = 10;
+                        offsetPosition.y_ = 10;
+                        bullets[i].position_ = players_[i].position_ + offsetPosition;
+                        bullets[i].direction = direction;
+                        bullets[i].direction.normalize();
                     }
                 }
                 for (auto& bl : bullets) {
@@ -299,9 +306,12 @@ void ServerApp::on_send(network::Connection* connection, const uint16 sequence, 
             break;
     }
     for (int i = 0; i < 4; i++) {
-        network::NetworkMessageGameState gameStateMessage(stateBits);
-        if (!gameStateMessage.write(writer)) {
-            assert(!"failed to write message!");
+        if (i == id) {
+            network::NetworkMessageGameState gameStateMessage(stateBits);
+            if (!gameStateMessage.write(writer)) {
+                assert(!"failed to write message!");
+            }
+            break;
         }
     }
 

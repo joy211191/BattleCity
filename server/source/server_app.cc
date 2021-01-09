@@ -7,10 +7,6 @@
 using namespace std;
 
 ServerApp::ServerApp () : tickrate_ (1.0 / 20.0), tick_ (0) {
-
-    for (int i = 0; i < sizeof (player_input_bits_); i++) {
-        player_input_bits_[i] = 0;
-    }
     winnerID = 4;
     gameState = gameplay::GameState::Searching;
 
@@ -51,107 +47,103 @@ void ServerApp::on_exit () {
 
 }
 
-bool ServerApp::on_tick (const Time& dt) {
+bool ServerApp::on_tick(const Time& dt) {
     accumulator_ += dt;
     while (accumulator_ >= tickrate_) {
         accumulator_ -= tickrate_;
         tick_++;
         switch (gameState) {
-        case gameplay::GameState::Searching: {
-            if (players_.size () > 0) {
-                for (int i = 0; i < players_.size ();i++) {
-                    players_[i].position_ = playerStartPositions[i];
+            case gameplay::GameState::Searching: {
+                if (players_.size() > 0) {
+                    for (int i = 0; i < players_.size(); i++) {
+                        players_[i].position_ = playerStartPositions[i];
+                    }
                 }
+                if (players_.size() == 4) {
+                    gameState = gameplay::GameState::Setup;
+                }
+                break;
             }
-            if (players_.size()==4) {
-                gameState = gameplay::GameState::Setup;
+            case gameplay::GameState::Setup: {
+                for (int i = 0; i < players_.size(); i++) {
+                    players_[i].position_ = playerStartPositions[i];
+                    bullets[i].position_ = playerStartPositions[i];
+                    bullets[i].bulletID = i;
+                    players_[i].alive = true;
+                    bullets[i].active = false;
+                }
+                gameState = gameplay::GameState::Gameplay;
+                break;
             }
-            break;
-        }
-        case gameplay::GameState::Setup: {
-            for (int i = 0; i < players_.size (); i++) {
-                players_[i].position_ = playerStartPositions[i];
-                bullets[i].position_ = playerStartPositions[i];
-                bullets[i].bulletID = i;
-                players_[i].alive = true;
-                bullets[i].active = false;
-            }
-            gameState = gameplay::GameState::Gameplay;
-            break;
-        }
-        case gameplay::GameState::Gameplay: {
-            /*if (!inputLibrary.empty()) {
-                if (players_[inputLibrary[0].playerID].alive) {
-                    const float speed = 100.0;
-                    const bool player_move_up = player_input_bits_[inputLibrary[0].playerID] == 1;
-                    const bool player_move_down = player_input_bits_[inputLibrary[0].playerID] == 2;
-                    const bool player_move_left = player_input_bits_[inputLibrary[0].playerID] == 4;
-                    const bool player_move_right = player_input_bits_[inputLibrary[0].playerID] == 8;
-                    const bool player_shoot = player_input_bits_[inputLibrary[0].playerID] && 16;
+            case gameplay::GameState::Gameplay: {
+                for (int i = 0; i < 4; i++) {
+                    if (players_[i].inputQueue.size() > 0) {
+                        const bool player_move_up = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Up));
+                        const bool player_move_down = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Down));
+                        const bool player_move_left = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Left));
+                        const bool player_move_right = players_[i].inputQueue[0].inputBit & (1 << int32(gameplay::Action::Right));
 
-                    Vector2 direction;
-                    if (player_move_up) {
-                        direction.y_ -= 1.0f;
-                    }
-                    if (player_move_down) {
-                        direction.y_ += 1.0f;
-                    }
-                    if (player_move_left) {
-                        direction.x_ -= 1.0f;
-                    }
-                    if (player_move_right) {
-                        direction.x_ += 1.0f;
-                    }
+                        Vector2 direction;
+                        if (player_move_up) {
+                            direction.y_ -= 1.0f;
+                        }
+                        if (player_move_down) {
+                            direction.y_ += 1.0f;
+                        }
+                        if (player_move_left) {
+                            direction.x_ -= 1.0f;
+                        }
+                        if (player_move_right) {
+                            direction.x_ += 1.0f;
+                        }
 
-                    if (direction.length() > 0) {
+                        if (direction.length() > 0.0f) {
+                            direction.normalize();
+                            players_[i].position_ += direction * speed * tickrate_.as_seconds();
+                        }
+
                         charlie::gameplay::Event tempEvent;
-                        tempEvent.playerID = players_[inputLibrary[0].playerID].playerID;
-                        tempEvent.position = players_[inputLibrary[0].playerID].position_;
+                        tempEvent.playerID = players_[i].playerID;
+                        tempEvent.position = players_[i].position_;
                         tempEvent.state = charlie::gameplay::EventStates::Shooting;
                         eventQueue.push_back(tempEvent);
-                        if (!bullets[inputLibrary[0].playerID].active) {
-                            bullets[inputLibrary[0].playerID].bulletID = inputLibrary[0].playerID;
-                            bullets[inputLibrary[0].playerID].active = true;
+                        if (!bullets[i].active) {
+                            bullets[i].bulletID = i;
+                            bullets[i].active = true;
                             Vector2 offsetPosition;
                             offsetPosition.x_ = 10;
                             offsetPosition.y_ = 10;
-                            bullets[inputLibrary[0].playerID].position_ = players_[inputLibrary[0].playerID].position_ + offsetPosition;
-                            bullets[inputLibrary[0].playerID].direction = direction;
-                            bullets[inputLibrary[0].playerID].direction.normalize();
+                            bullets[i].position_ = players_[i].position_ + offsetPosition;
+                            bullets[i].direction = direction;
+                            bullets[i].direction.normalize();
+                        }
+                        players_[i].inputQueue.erase(players_[i].inputQueue.begin());
+                    }
+                }
+                for (auto& bl : bullets) {
+                    Bullet(bl.bulletID, bl.direction);
+                }
+                int temp = 0;
+                for (int i = 0; i < players_.size(); i++) {
+                    if (players_[i].alive) {
+                        temp++;
+                    }
+                }
+                if (temp == 1) {
+                    for (int i = 0; i < players_.size(); i++) {
+                        if (players_[i].alive) {
+                            winnerID = i;
+                            break;
                         }
                     }
-                    if (direction.length() > 0.0f) {
-                        direction.normalize();
-                        players_[inputLibrary[0].playerID].position_ += direction * speed * tickrate_.as_seconds();
-                    }
-                    //}
-                    inputLibrary.erase(inputLibrary.begin());
+                    gameState = gameplay::GameState::Exit;
                 }
-            }*/
-            for (auto& bl : bullets) {
-                Bullet (bl.bulletID, bl.direction);
+                break;
             }
-            int temp = 0;
-            for (int i = 0; i < players_.size (); i++) {
-                if (players_[i].alive){
-                    temp++;
-                }
+            case gameplay::GameState::Exit: {
+
+                break;
             }
-            if (temp == 1) {
-                for (int i = 0; i < players_.size (); i++) {
-                    if (players_[i].alive) {
-                        winnerID = i;
-                        break;
-                    }
-                }
-                gameState = gameplay::GameState::Exit;
-            }
-            break;
-        }
-        case gameplay::GameState::Exit: {
-           
-            break;
-        }
         }
     }
     return true;
@@ -172,7 +164,6 @@ void ServerApp::Bullet (int id,Vector2 direction) {
         if (bullets[id].position_.x_<0 || bullets[id].position_.x_>window_.width_ || bullets[id].position_.y_<0 || bullets[id].position_.y_>window_.height_)
             bullets[id].active = false;
         for (auto& pl : players_) {
-            printf ("%d", CollisionCheck (bullets[id].position_, pl.position_));
             if (pl.playerID != id && CollisionCheck (bullets[id].position_, pl.position_)) {
                 pl.alive = false;
                 break;
@@ -261,49 +252,51 @@ void ServerApp::on_receive (network::Connection* connection,  network::NetworkSt
         if (reader.peek () != network::NETWORK_MESSAGE_INPUT_COMMAND) {
             break;
         }
-
         network::NetworkMessageInputCommand command;
         if (!command.read (reader)) {
             assert (!"could not read command!");
         }
-        printf("Recieved tick: %d\n", (int)command.tick_);
-        ServerInputinator temp;
-        temp.playerID = command.id;
-        temp.tick = command.tick_;
-        temp.inputBits = command.bits_;
-        inputLibrary.push_back(temp);
+        printf("Recieved tick: %d for id %d\n", (int)command.tick_,(int)command.id);
+        for (int i = 0; i < 4; i++) {
+            if (i == id) {
+                gameplay::Inputinator temp;
+                temp.tick = command.tick_;
+                temp.inputBit = command.bits_;
+                players_[i].inputQueue.push_back(temp);
+            }
+        }
     }
 }
 
-void ServerApp::on_send (network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
-    auto id = clients_.find_client ((uint64)connection);
-        for (int i = 0; i < players_.size (); i++) {
-            network::NetworkMessageServerTick message (Time::now ().as_ticks (), tick_, id);
-            if (!message.write (writer)) {
-                assert (!"failed to write message!");
-            }
+void ServerApp::on_send(network::Connection* connection, const uint16 sequence, network::NetworkStreamWriter& writer) {
+    auto id = clients_.find_client((uint64)connection);
+    for (int i = 0; i < players_.size(); i++) {
+        network::NetworkMessageServerTick message(Time::now().as_ticks(), tick_, id);
+        if (!message.write(writer)) {
+            assert(!"failed to write message!");
         }
+    }
     uint8 stateBits = 0;
     switch (gameState)
     {
-    case gameplay::GameState::Searching: {
-        stateBits = 0;
-        break;
-    }
-    case gameplay::GameState::Setup: {
-        stateBits = 1;
-        break;
-    }
-    case gameplay::GameState::Gameplay: {
-        stateBits = 2;
-        break;
-    }
-    case gameplay::GameState::Exit: {
-        stateBits = 3;
-        break;
-    }
-    default:
-        break;
+        case gameplay::GameState::Searching: {
+            stateBits = 0;
+            break;
+        }
+        case gameplay::GameState::Setup: {
+            stateBits = 1;
+            break;
+        }
+        case gameplay::GameState::Gameplay: {
+            stateBits = 2;
+            break;
+        }
+        case gameplay::GameState::Exit: {
+            stateBits = 3;
+            break;
+        }
+        default:
+            break;
     }
     for (int i = 0; i < 4; i++) {
         network::NetworkMessageGameState gameStateMessage(stateBits);
@@ -314,38 +307,38 @@ void ServerApp::on_send (network::Connection* connection, const uint16 sequence,
 
     for (int i = 0; i < 4; i++) {
         if (bullets[i].active) {
-            network::NetworkMessageShoot message (bullets[i].active, tick_, i, bullets[i].position_, bullets[i].direction);
-            if (!message.write (writer)) {
-                assert (!"failed to write message!");
+            network::NetworkMessageShoot message(bullets[i].active, tick_, i, bullets[i].position_, bullets[i].direction);
+            if (!message.write(writer)) {
+                assert(!"failed to write message!");
             }
         }
     }
     {
-        for (uint8 i = 0; i < players_.size (); i++) {
+        for (uint8 i = 0; i < players_.size(); i++) {
             if (id == players_[i].playerID) {
-                if (!eventQueue.empty ()) {
+                if (!eventQueue.empty()) {
                     charlie::gameplay::ReliableMessage temp;
-                    temp.event = eventQueue.front ();
+                    temp.event = eventQueue.front();
                     temp.sequenceNumber = sequence;
-                    players_[i].eventQueue.push_back (temp);
+                    players_[i].eventQueue.push_back(temp);
                 }
-                network::NetworkMessagePlayerState message (players_[i].position_, players_[i].playerID, players_[i].alive,tick_);
-                if (!message.write (writer)) {
-                    assert (!"failed to write message!");
+                network::NetworkMessagePlayerState message(players_[i].position_, players_[i].playerID, players_[i].alive, tick_);
+                if (!message.write(writer)) {
+                    assert(!"failed to write message!");
                 }
             }
             else {
-                network::NetworkMessageEntityState message (players_[i].position_, players_[i].playerID, players_[i].alive);
-                if (!message.write (writer)) {
-                    assert (!"failed to write message!");
+                network::NetworkMessageEntityState message(players_[i].position_, players_[i].playerID, players_[i].alive);
+                if (!message.write(writer)) {
+                    assert(!"failed to write message!");
                 }
             }
         }
     }
     if (gameState == gameplay::GameState::Exit) {
-        network::NetoworkMessageWinner message (winnerID);
-        if (!message.write (writer)) {
-            assert (!"failed to write message!");
+        network::NetoworkMessageWinner message(winnerID);
+        if (!message.write(writer)) {
+            assert(!"failed to write message!");
         }
     }
 }

@@ -1,2 +1,4 @@
-﻿  server_app.cc
+﻿  main.cc
+  server_app.cc
+  Generating Code...
   server.vcxproj -> D:\Docs\GitHub\BattleCity\build\server.debug.exe

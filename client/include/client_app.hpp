@@ -84,6 +84,7 @@ struct ClientApp final : Application, network::IConnectionListener {
    void FixPlayerPositions(uint32 serverTick, Vector2 serverPosition);
 
    charlie::DynamicArray<Inputinator> inputLibrary;
+   charlie::DynamicArray<Inputinator> sentLibrary;
 
    uint32 clientTick;
    uint32 recievedServerTick;
@@ -94,7 +95,6 @@ struct ClientApp final : Application, network::IConnectionListener {
 
    network::UDPSocket socket;
    network::IPAddress serverIP;
-   bool ServerDiscovery ();
    bool serverFound=false;
    int8 iterator;
    bool idApplied;
@@ -102,6 +102,7 @@ struct ClientApp final : Application, network::IConnectionListener {
    Vector2 recievedPosition;
    Vector2 bulletServerPosition;
    Vector2 entityServerPosition;
+   bool ServerDiscovery();
    bool ConnectionCheck();
    void EntityInterpolator();
    void BulletInpterpolator();

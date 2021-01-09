@@ -76,10 +76,10 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
     Vector2 playerStartPositions[4];
 
     gameplay::Entity entity_;
+    const float speed = 100.0;
 
     Random random_;
     charlie::DynamicArray<gameplay::Player> players_;
-    uint8 player_input_bits_[4];
     gameplay::Bullet bullets[4];
 
     const float bulletSpeed = 150.0;
@@ -96,11 +96,14 @@ struct ServerApp final : Application, network::IServiceListener, network::IConne
 
     class ServerInputinator {
     public:
-        int32 playerID;
-        uint8 inputBits;
         uint32 tick;
+        uint8 inputBits;
     };
 
-    charlie::DynamicArray<ServerInputinator> inputLibrary;
+
+    int32 playerID;
+    uint8 inputBits;
+    ServerInputinator serverSideList[4];
+
 };
 #endif

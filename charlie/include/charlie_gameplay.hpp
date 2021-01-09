@@ -65,13 +65,20 @@ namespace charlie {
           Event event;
       };
 
+      struct Inputinator {
+          uint32 tick;
+          uint8 inputBit;
+      };
+
       struct Player {
           bool alive;
-         charlie::DynamicArray<ReliableMessage> eventQueue;
          Vector2 position_;
+         Vector2 calculatedPosition;
          int32 playerID;
          uint8 hp;
          Color playerColor;
+         charlie::DynamicArray<ReliableMessage> eventQueue;
+         charlie::DynamicArray<Inputinator> inputQueue;
       };
 
       struct ComponentBase {

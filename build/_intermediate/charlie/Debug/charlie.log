@@ -1,9 +1,5 @@
 ﻿  charlie_application.cc
   charlie_gameplay.cc
   charlie_messages.cc
-  charlie_system.cc
-  charlie_network.cc
-  charlie_protocol.cc
-  winmain.cc
   Generating Code...
   charlie.vcxproj -> D:\Docs\GitHub\BattleCity\build\charlie.debug.lib
